@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  /* Institutional Precision — Stitch design system */
+  --color-primary: #0f4c81;
+  --color-primary-dark: #00355f;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #0f4c81;
+  --color-on-primary-container: #8ebdf9;
+
+  --color-background: #f9f9ff;
+  --color-surface: #ffffff;
+  --color-surface-container: #e7eefe;
+  --color-surface-container-high: #e2e8f8;
+  --color-surface-container-low: #f0f3ff;
+
+  --color-on-surface: #151c27;
+  --color-on-surface-variant: #42474f;
+  --color-outline: #727780;
+  --color-outline-variant: #c2c7d1;
+
+  --color-secondary: #5c5f62;
+  --color-secondary-container: #dee0e4;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-on-surface);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+* {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.font-mono, .tabular-nums, .font-data {
+  font-family: var(--font-jetbrains-mono), 'Courier New', monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-on-surface);
+}
