@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  blockchain    String
+  walletAddress String   @map("wallet_address")
+  txHash        String   @map("tx_hash")
+  date          DateTime
+  type          String
+  assetSymbol   String   @map("asset_symbol")
+  assetAddress  String?  @map("asset_address")
+  amount        Decimal  @db.Decimal(36, 18)
+  fromAddress   String?  @map("from_address")
+  toAddress     String?  @map("to_address")
+  priceUsd      Decimal? @map("price_usd") @db.Decimal(24, 8)
+  valueUsd      Decimal? @map("value_usd") @db.Decimal(24, 8)
+  ptax          Decimal? @db.Decimal(12, 6)
+  valueBrl      Decimal? @map("value_brl") @db.Decimal(24, 8)
+  sourceApi     String   @map("source_api")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([blockchain, txHash, walletAddress], name: "uq_transaction")
+  @@index([blockchain, walletAddress, date])
+  @@map("transactions")
+}
+
+model Quote {
+  id        String   @id @default(cuid())
+  symbol    String
+  quoteDate DateTime @map("quote_date") @db.Date
+  priceUsd  Decimal  @map("price_usd") @db.Decimal(24, 8)
+  priceBrl  Decimal? @map("price_brl") @db.Decimal(24, 8)
+  sourceApi String   @map("source_api")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([symbol, quoteDate], name: "uq_quote")
+  @@map("quotes")
+}
+
+model PtaxRate {
+  id        String   @id @default(cuid())
+  quoteDate DateTime @map("quote_date") @db.Date
+  usdBrl    Decimal  @map("usd_brl") @db.Decimal(12, 6)
+  sourceApi String   @map("source_api")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([quoteDate], name: "uq_ptax_date")
+  @@index([quoteDate])
+  @@map("ptax_rates")
+}
+
+model TokenMetadata {
+  id           String   @id @default(cuid())
+  blockchain   String
+  tokenAddress String   @map("token_address")
+  symbol       String
+  name         String
+  decimals     Int
+  sourceApi    String   @map("source_api")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([blockchain, tokenAddress], name: "uq_token_metadata")
+  @@map("token_metadata")
+}
+
+model SearchLog {
+  id                String   @id @default(cuid())
+  blockchain        String
+  walletAddress     String   @map("wallet_address")
+  startDate         DateTime @map("start_date") @db.Date
+  endDate           DateTime @map("end_date") @db.Date
+  status            String
+  totalTransactions Int?     @map("total_transactions")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([blockchain, walletAddress])
+  @@map("search_logs")
+}
