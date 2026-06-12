@@ -26,4 +26,14 @@ export async function register() {
       missingOptional.map(([k, desc]) => `  • ${k} — ${desc}`).join('\n') + '\n'
     );
   }
+
+  const hasUpstash =
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!hasUpstash) {
+    console.warn(
+      '\n⚠ UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN não configurados.\n' +
+      '  Rate limiting usando memória local — não funciona entre múltiplas instâncias serverless.\n' +
+      '  Configure um banco Upstash em https://console.upstash.com antes do deploy em produção.\n'
+    );
+  }
 }
