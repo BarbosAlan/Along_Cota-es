@@ -10,13 +10,16 @@ import { QuotesTable } from '@/components/QuotesTable';
 import { HistoryTable } from '@/components/HistoryTable';
 import { Dashboard } from '@/components/Dashboard';
 import { SettingsPanel } from '@/components/SettingsPanel';
-import type { SearchResponse, QuotesResponse, HistoryLog, DashboardData } from '@/types';
+import { BatchSearchForm } from '@/components/BatchSearchForm';
+import { BatchResultsPanel } from '@/components/BatchResultsPanel';
+import type { BatchFormData } from '@/components/BatchSearchForm';
+import type { SearchResponse, QuotesResponse, HistoryLog, DashboardData, BatchResponse } from '@/types';
 import type { z } from 'zod';
 import type { searchRequestSchema, quotesRequestSchema } from '@/lib/validation';
 
 type SearchFormData = z.infer<typeof searchRequestSchema>;
 type QuotesFormData = z.infer<typeof quotesRequestSchema>;
-type NavItem = 'dashboard' | 'transactions' | 'quotes' | 'history' | 'settings';
+type NavItem = 'dashboard' | 'transactions' | 'batch' | 'quotes' | 'history' | 'settings';
 
 /* ── SVG Icons ── */
 function IconTransactions() {
@@ -48,6 +51,15 @@ function IconHistory() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
       <path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
+    </svg>
+  );
+}
+function IconBatch() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="4" rx="1" />
+      <rect x="2" y="10" width="20" height="4" rx="1" />
+      <rect x="2" y="17" width="20" height="4" rx="1" />
     </svg>
   );
 }
@@ -110,6 +122,10 @@ export default function HomePage() {
   const [qLoading, setQLoading] = useState(false);
   const [qResult, setQResult] = useState<QuotesResponse | null>(null);
   const [qError, setQError] = useState<string | null>(null);
+
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchResults, setBatchResults] = useState<BatchResponse | null>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
 
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -180,6 +196,43 @@ export default function HomePage() {
     if (txLastQuery) handleSearch(txLastQuery, true);
   }
 
+  async function handleBatchSearch(data: BatchFormData) {
+    setBatchLoading(true);
+    setBatchError(null);
+    setBatchResults(null);
+    try {
+      const res = await fetch('/api/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message ?? json.error ?? 'Erro ao buscar carteiras');
+      setBatchResults(json as BatchResponse);
+    } catch (err) {
+      setBatchError(err instanceof Error ? err.message : 'Erro desconhecido');
+    } finally {
+      setBatchLoading(false);
+    }
+  }
+
+  function handleViewBatchWallet(address: string) {
+    const data: SearchFormData = {
+      walletAddress: address,
+      startDate: batchResults
+        ? (() => {
+            const r = batchResults.results.find(r => r.address === address);
+            return r?.transactions[0]?.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+          })()
+        : new Date().toISOString().slice(0, 10),
+      endDate: new Date().toISOString().slice(0, 10),
+    };
+    setTxPrefill({ walletAddress: address });
+    setTxFormKey(k => k + 1);
+    setActiveNav('transactions');
+    handleSearch({ walletAddress: address, startDate: data.startDate, endDate: data.endDate });
+  }
+
   async function handleQuotesSearch(data: QuotesFormData) {
     setQLoading(true);
     setQError(null);
@@ -203,6 +256,7 @@ export default function HomePage() {
   const pageTitle =
     activeNav === 'dashboard'    ? 'Dashboard'      :
     activeNav === 'transactions' ? 'Transações'     :
+    activeNav === 'batch'        ? 'Busca em Lote'  :
     activeNav === 'quotes'       ? 'Cotações'       :
     activeNav === 'settings'     ? 'Configurações'  : 'Histórico';
   const pageDesc =
@@ -210,6 +264,8 @@ export default function HomePage() {
       ? 'Visão geral do sistema — transações, cotações em cache e consultas recentes'
       : activeNav === 'transactions'
       ? 'Histórico de carteiras blockchain convertido para BRL pela taxa PTAX do Banco Central'
+      : activeNav === 'batch'
+      ? 'Busca simultânea em até 10 carteiras — resultados consolidados com exportação combinada'
       : activeNav === 'quotes'
       ? 'Cotações diárias com câmbio oficial do Banco Central (PTAX)'
       : activeNav === 'settings'
@@ -249,6 +305,12 @@ export default function HomePage() {
             label="Transações"
             active={activeNav === 'transactions'}
             onClick={() => navigateTo('transactions')}
+          />
+          <NavLink
+            icon={<IconBatch />}
+            label="Busca em Lote"
+            active={activeNav === 'batch'}
+            onClick={() => navigateTo('batch')}
           />
           <NavLink
             icon={<IconQuotes />}
@@ -382,6 +444,39 @@ export default function HomePage() {
                   <p className="text-xs text-[#727780] mt-5 leading-relaxed">
                     Cole o endereço da carteira — a rede é detectada automaticamente.<br />
                     Os valores são convertidos para BRL pela taxa PTAX do Banco Central.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Batch */}
+          {activeNav === 'batch' && (
+            <div className="space-y-5 max-w-[1100px]">
+              <BatchSearchForm onSearch={handleBatchSearch} isLoading={batchLoading} />
+
+              {batchError && (
+                <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-[#ba1a1a]">Erro na consulta</p>
+                  <p className="text-sm text-[#93000a] mt-1">{batchError}</p>
+                </div>
+              )}
+
+              {batchLoading && <LoadingState message="Buscando carteiras em paralelo…" />}
+
+              {batchResults && !batchLoading && (
+                <BatchResultsPanel
+                  data={batchResults}
+                  onViewWallet={handleViewBatchWallet}
+                />
+              )}
+
+              {!batchLoading && !batchResults && !batchError && (
+                <div className="rounded-lg border border-dashed border-[#c2c7d1] px-8 py-10 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#727780] mb-2">Busca em lote</p>
+                  <p className="text-xs text-[#727780] leading-relaxed max-w-sm mx-auto">
+                    Cole até 10 endereços de carteira no campo acima — um por linha ou separados por vírgula.<br />
+                    Todas as carteiras são processadas em paralelo e os resultados aparecem consolidados.
                   </p>
                 </div>
               )}

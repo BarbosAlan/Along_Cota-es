@@ -66,3 +66,26 @@ export const quotesExportRequestSchema = z.object({
   symbol: z.string(),
   format: z.enum(['xlsx', 'csv']),
 });
+
+export const batchRequestSchema = z
+  .object({
+    addresses: z
+      .array(z.string().min(10).max(128).trim())
+      .min(1, 'Informe ao menos um endereço')
+      .max(10, 'Máximo de 10 endereços por busca'),
+    startDate: z
+      .string()
+      .refine(s => isValid(parseISO(s)), 'Data inicial inválida'),
+    endDate: z
+      .string()
+      .refine(s => isValid(parseISO(s)), 'Data final inválida'),
+    forceRefresh: z.boolean().optional(),
+  })
+  .refine(data => !isAfter(parseISO(data.startDate), parseISO(data.endDate)), {
+    message: 'A data inicial deve ser anterior ou igual à data final',
+    path: ['startDate'],
+  })
+  .refine(data => !isAfter(parseISO(data.endDate), new Date()), {
+    message: 'A data final não pode ser futura',
+    path: ['endDate'],
+  });

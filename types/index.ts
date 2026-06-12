@@ -185,6 +185,29 @@ export interface HistoryLog {
   createdAt: string;
 }
 
+export interface BatchWalletResult {
+  address: string;
+  chains: string[];
+  status: 'success' | 'error';
+  transactions: EnrichedTransactionRow[];
+  summary: TransactionSummary;
+  fromCache: boolean;
+  warnings: string[];
+  error?: string;
+}
+
+export interface BatchResponse {
+  results: BatchWalletResult[];
+  combined: {
+    totalAddresses: number;
+    successCount: number;
+    errorCount: number;
+    totalTransactions: number;
+    totalValueBrl: number | null;
+    totalValueUsd: number | null;
+  };
+}
+
 export const BLOCKCHAIN_EXPLORERS: Record<BlockchainId, string> = {
   ethereum: 'https://etherscan.io/tx/',
   polygon: 'https://polygonscan.com/tx/',

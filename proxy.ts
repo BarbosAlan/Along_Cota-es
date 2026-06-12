@@ -22,6 +22,8 @@ const RULES: RouteRule[] = [
   { pattern: /^\/api\/quotes$/,       method: 'POST', limit: 10, windowMs: 60_000 },
   // File generation
   { pattern: /^\/api\/export$/,       method: 'POST', limit: 10, windowMs: 60_000 },
+  // Batch: hits multiple blockchain APIs per request
+  { pattern: /^\/api\/batch$/,        method: 'POST', limit: 3,  windowMs: 60_000 },
   // Destructive: clears cached data
   { pattern: /^\/api\/settings$/,     method: 'POST', limit: 5,  windowMs: 300_000 },
   // Cheap reads — lenient
