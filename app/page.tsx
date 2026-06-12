@@ -180,7 +180,12 @@ export default function HomePage() {
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, forceRefresh: forceRefresh || undefined }),
+        body: JSON.stringify({
+          walletAddress: data.walletAddress,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          ...(forceRefresh ? { forceRefresh: true } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message ?? json.error ?? 'Erro ao buscar transações');
