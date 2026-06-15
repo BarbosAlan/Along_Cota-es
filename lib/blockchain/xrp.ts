@@ -1,38 +1,52 @@
 import type { BlockchainId, RawTransaction } from '@/types';
 import type { BlockchainAdapter } from './types';
 import { BlockchainApiError, withRetry, fetchWithTimeout } from '@/lib/errors';
-import { parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 
-const DATA_BASE = 'https://data.ripple.com/v2';
-const XRP_DROPS = 1_000_000;
+// Public XRPL full-history node (XRPL Commons / Sologenic)
+const XRPL_RPC = 'https://xrplcluster.com';
+
+// Ripple epoch starts 2000-01-01 00:00:00 UTC = Unix 946684800
+const RIPPLE_EPOCH_OFFSET = 946684800;
+
 const PAGE_LIMIT = 200;
 
 type XrpAmount = string | { value: string; currency: string; issuer: string };
 
-interface RippleTx {
-  hash: string;
-  date: string;
+interface XrplTx {
+  meta: {
+    delivered_amount?: XrpAmount;
+    TransactionResult: string;
+  };
   tx: {
     TransactionType: string;
     Account: string;
     Destination?: string;
     Amount?: XrpAmount;
+    date?: number; // Ripple epoch seconds
+    hash: string;
   };
-  meta?: {
-    delivered_amount?: XrpAmount;
-  };
+  validated: boolean;
 }
 
-interface RippleResponse {
-  result: string;
-  count: number;
-  marker?: string;
-  transactions: RippleTx[];
+interface XrplAccountTxResult {
+  status: string;
+  account: string;
+  transactions: XrplTx[];
+  marker?: unknown;
+}
+
+interface XrplResponse {
+  result: XrplAccountTxResult;
+}
+
+function rippleToDate(rippleTime: number): Date {
+  return new Date((rippleTime + RIPPLE_EPOCH_OFFSET) * 1000);
 }
 
 function parseXrpAmount(amount: XrpAmount): { symbol: string; value: string } {
   if (typeof amount === 'string') {
-    return { symbol: 'XRP', value: (parseInt(amount, 10) / XRP_DROPS).toFixed(6) };
+    return { symbol: 'XRP', value: (parseInt(amount, 10) / 1_000_000).toFixed(6) };
   }
   if (amount.currency.length === 3) {
     return { symbol: amount.currency, value: amount.value };
@@ -48,29 +62,33 @@ function parseXrpAmount(amount: XrpAmount): { symbol: string; value: string } {
 }
 
 export class XrpAdapter implements BlockchainAdapter {
-  readonly name = 'Ripple Data API';
+  readonly name = 'XRPL JSON-RPC';
   readonly supportedChains: BlockchainId[] = ['xrp'];
 
-  private async fetchPage(
-    address: string,
-    start: Date,
-    end: Date,
-    marker?: string
-  ): Promise<RippleResponse> {
-    const url = new URL(`${DATA_BASE}/accounts/${address}/transactions`);
-    url.searchParams.set('type', 'Payment');
-    url.searchParams.set('result', 'tesSUCCESS');
-    url.searchParams.set('start', start.toISOString());
-    url.searchParams.set('end', end.toISOString());
-    url.searchParams.set('limit', PAGE_LIMIT.toString());
-    if (marker) url.searchParams.set('marker', marker);
+  private async fetchPage(address: string, marker?: unknown): Promise<XrplAccountTxResult> {
+    const body = {
+      method: 'account_tx',
+      params: [{
+        account: address,
+        limit: PAGE_LIMIT,
+        forward: false, // newest-first so we can stop early at startDate
+        ...(marker !== undefined ? { marker } : {}),
+      }],
+    };
 
-    return withRetry(async () => {
-      const res = await fetchWithTimeout(url.toString(), { next: { revalidate: 0 } });
+    const data: XrplResponse = await withRetry(async () => {
+      const res = await fetchWithTimeout(XRPL_RPC, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        next: { revalidate: 0 },
+      });
       if (res.status === 429) throw new BlockchainApiError('xrp', 429, 'Rate limited', true);
       if (!res.ok) throw new BlockchainApiError('xrp', res.status, `HTTP ${res.status}`, res.status >= 500);
       return res.json();
     }, 3, 1000);
+
+    return data.result;
   }
 
   async getTransactions(
@@ -82,19 +100,32 @@ export class XrpAdapter implements BlockchainAdapter {
     const startDay = startOfDay(startDate);
     const endDay = endOfDay(endDate);
     const transactions: RawTransaction[] = [];
-    let marker: string | undefined;
+    let marker: unknown = undefined;
 
     while (true) {
-      const data = await this.fetchPage(walletAddress, startDay, endDay, marker);
+      const result = await this.fetchPage(walletAddress, marker);
 
-      if (data.result !== 'success' || !data.transactions?.length) break;
+      if (result.status !== 'success' || !result.transactions?.length) break;
 
-      for (const entry of data.transactions) {
-        const date = parseISO(entry.date);
-        if (isBefore(date, startDay) || isAfter(date, endDay)) continue;
+      let reachedStart = false;
+      for (const entry of result.transactions) {
+        if (!entry.validated) continue;
+        if (entry.meta.TransactionResult !== 'tesSUCCESS') continue;
         if (entry.tx.TransactionType !== 'Payment') continue;
+        if (entry.tx.date === undefined) continue;
 
-        const rawAmount = entry.meta?.delivered_amount ?? entry.tx.Amount;
+        const date = rippleToDate(entry.tx.date);
+
+        // Fetching newest-first: once we pass startDay we're done
+        if (isBefore(date, startDay)) {
+          reachedStart = true;
+          break;
+        }
+
+        // Skip transactions outside the requested window
+        if (isAfter(date, endDay)) continue;
+
+        const rawAmount = entry.meta.delivered_amount ?? entry.tx.Amount;
         if (!rawAmount) continue;
 
         const { symbol, value } = parseXrpAmount(rawAmount);
@@ -103,19 +134,19 @@ export class XrpAdapter implements BlockchainAdapter {
         const type = from.toLowerCase() === walletAddress.toLowerCase() ? 'send' : 'receive';
 
         transactions.push({
-          txHash: entry.hash,
+          txHash: entry.tx.hash,
           date,
           type,
           assetSymbol: symbol,
           amount: value,
           fromAddress: from,
           toAddress: to,
-          sourceApi: 'ripple_data',
+          sourceApi: 'xrpl',
         });
       }
 
-      marker = data.marker;
-      if (!marker) break;
+      if (reachedStart || !result.marker) break;
+      marker = result.marker;
       await new Promise(r => setTimeout(r, 200));
     }
 

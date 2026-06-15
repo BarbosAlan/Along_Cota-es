@@ -24,7 +24,7 @@ export type BlockchainApiSource =
   | 'trongrid'
   | 'terra_fcd'
   | 'koios'
-  | 'ripple_data'
+  | 'xrpl'
   | 'lisk_api';
 
 export interface RawTransaction {
