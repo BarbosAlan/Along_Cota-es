@@ -230,7 +230,7 @@ export function ResultsTable({ transactions, summary, fromCache, warnings, onRef
                       {tx.assetSymbol}
                     </td>
                     <td className="px-4 py-2.5 text-right font-[var(--font-jetbrains-mono)] text-xs text-[#151c27] tabular-nums">
-                      {parseFloat(tx.amount).toLocaleString('pt-BR', { maximumFractionDigits: 8 })}
+                      {(() => { const n = parseFloat(tx.amount); return isNaN(n) ? tx.amount : n.toLocaleString('pt-BR', { maximumFractionDigits: 8 }); })()}
                     </td>
                     <td className="px-4 py-2.5 text-right font-[var(--font-jetbrains-mono)] text-xs text-[#42474f] tabular-nums">
                       {fmtUsd(tx.priceUsd)}

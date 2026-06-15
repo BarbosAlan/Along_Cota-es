@@ -3,8 +3,8 @@ import { parseISO, startOfDay, endOfDay } from 'date-fns';
 
 const BASE_URL = 'https://api.binance.com/api/v3/klines';
 
-// Pairs to try in order: USDT first, then BUSD, then BTC-derived
-const QUOTE_ASSETS = ['USDT', 'BUSD'];
+// USDT only — BUSD was delisted from Binance in December 2023
+const QUOTE_ASSETS = ['USDT'];
 
 async function fetchKline(
   baseSymbol: string,

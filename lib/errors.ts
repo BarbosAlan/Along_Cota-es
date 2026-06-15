@@ -63,7 +63,8 @@ export async function withRetry<T>(
       if (err instanceof BlockchainApiError && !err.retryable) throw err;
       lastError = err as Error;
       if (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, delayMs * attempt));
+        const jitter = Math.floor(Math.random() * 500);
+        await new Promise(r => setTimeout(r, delayMs * Math.pow(2, attempt - 1) + jitter));
       }
     }
   }

@@ -133,6 +133,7 @@ export default function HomePage() {
 
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -144,12 +145,13 @@ export default function HomePage() {
       if (saved === 'history') {
         setHistoryLoading(true);
         const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET;
+        setHistoryError(null);
         fetch('/api/history', {
           headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
         })
           .then(r => r.json())
           .then(data => setHistoryLogs(data.logs))
-          .catch(() => setHistoryLogs([]))
+          .catch(() => setHistoryError('Não foi possível carregar o histórico de buscas.'))
           .finally(() => setHistoryLoading(false));
       } else if (saved === 'dashboard') {
         loadDashboard();
@@ -444,15 +446,16 @@ export default function HomePage() {
           {/* Dashboard */}
           {activeNav === 'dashboard' && (
             <div>
-              {dashboardLoading && <LoadingState message="Carregando dados…" />}
-              {!dashboardLoading && dashboardData && (
+              {dashboardLoading && !dashboardData && <LoadingState message="Carregando dados…" />}
+              {dashboardData && (
                 <div className="space-y-2">
                   <div className="flex justify-end mb-1">
                     <button
                       onClick={loadDashboard}
-                      className="text-xs text-[#0f4c81] hover:underline font-medium"
+                      disabled={dashboardLoading}
+                      className="text-xs text-[#0f4c81] hover:underline font-medium disabled:opacity-50"
                     >
-                      Atualizar
+                      {dashboardLoading ? 'Atualizando…' : 'Atualizar'}
                     </button>
                   </div>
                   <Dashboard data={dashboardData} />
@@ -617,7 +620,13 @@ export default function HomePage() {
                   ))}
                 </div>
               )}
-              {!historyLoading && historyLogs !== null && (
+              {!historyLoading && historyError && (
+                <div className="bg-[#ffdad6] border border-[#ba1a1a]/30 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-[#ba1a1a]">Erro ao carregar histórico</p>
+                  <p className="text-sm text-[#93000a] mt-1">{historyError}</p>
+                </div>
+              )}
+              {!historyLoading && !historyError && historyLogs !== null && (
                 <HistoryTable logs={historyLogs} onRerun={handleRerun} />
               )}
             </div>

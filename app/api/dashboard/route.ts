@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { format } from 'date-fns';
 
+export const runtime = 'nodejs';
+
 export async function GET(): Promise<NextResponse> {
   try {
     const [

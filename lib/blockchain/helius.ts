@@ -48,6 +48,7 @@ export class HeliusAdapter implements BlockchainAdapter {
 
     return withRetry(async () => {
       const res = await fetchWithTimeout(url.toString(), { next: { revalidate: 0 } });
+      if (res.status === 429) throw new BlockchainApiError('solana', 429, 'Rate limited', true);
       if (!res.ok) {
         throw new BlockchainApiError('solana', res.status, `HTTP ${res.status}`, res.status >= 500);
       }

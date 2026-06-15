@@ -114,8 +114,6 @@ export async function getCoingeckoPrice(
   if (['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD'].includes(upper)) return 1.0;
 
   try {
-    await acquireToken();
-
     // Format date as DD-MM-YYYY (CoinGecko requirement)
     const cgDate = format(parseISO(date), 'dd-MM-yyyy');
 

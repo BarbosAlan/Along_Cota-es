@@ -94,6 +94,10 @@ export async function fetchAndEnrichTransactions(
       );
     }
 
+    if (warnings.length > 0) {
+      console.warn(`[pricing] ${warnings.length} cotações não encontradas:`, warnings.join(', '));
+    }
+
     // ── Build all enriched records in memory (no DB calls) ──────────────────
     const enrichedRecords = txList.map(tx => {
       const dateKey = format(tx.date, 'yyyy-MM-dd');

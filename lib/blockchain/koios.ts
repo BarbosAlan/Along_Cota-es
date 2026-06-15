@@ -106,23 +106,24 @@ export class KoiosAdapter implements BlockchainAdapter {
         const inputAddresses = new Set(info.inputs.map(inp => inp.payment_addr.bech32));
         const isSend = inputAddresses.has(walletAddress);
 
-        // Sum lovelace relevant to this wallet
-        let lovelace = 0;
+        // Sum lovelace relevant to this wallet using BigInt to avoid precision loss
+        // on large stake pool / exchange wallets (values can exceed Number.MAX_SAFE_INTEGER)
+        let lovelace = 0n;
         if (isSend) {
           for (const out of info.outputs) {
             if (out.payment_addr.bech32 !== walletAddress) {
-              lovelace += parseInt(out.value, 10);
+              lovelace += BigInt(out.value);
             }
           }
         } else {
           for (const out of info.outputs) {
             if (out.payment_addr.bech32 === walletAddress) {
-              lovelace += parseInt(out.value, 10);
+              lovelace += BigInt(out.value);
             }
           }
         }
 
-        if (lovelace === 0) continue;
+        if (lovelace === 0n) continue;
 
         const fromAddresses = [...inputAddresses];
         const toAddresses = info.outputs
@@ -134,7 +135,7 @@ export class KoiosAdapter implements BlockchainAdapter {
           date,
           type: isSend ? 'send' : 'receive',
           assetSymbol: 'ADA',
-          amount: (lovelace / LOVELACE).toFixed(6),
+          amount: `${lovelace / BigInt(LOVELACE)}.${(lovelace % BigInt(LOVELACE)).toString().padStart(6, '0')}`,
           fromAddress: fromAddresses[0],
           toAddress: toAddresses[0],
           sourceApi: 'koios',
