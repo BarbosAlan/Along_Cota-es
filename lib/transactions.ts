@@ -5,7 +5,6 @@ import { getPtax } from '@/lib/pricing/ptax';
 import { normalizeTransaction } from '@/lib/normalize/normalizeTransaction';
 import type {
   BlockchainId,
-  SearchResponse,
   EnrichedTransactionRow,
   TransactionSummary,
 } from '@/types';
@@ -93,51 +92,69 @@ export async function fetchAndEnrichTransactions(
       );
     }
 
-    // Upsert all transactions with enrichment
-    for (const tx of txList) {
+    // ── Build all enriched records in memory (no DB calls) ──────────────────
+    const enrichedRecords = txList.map(tx => {
       const dateKey = format(tx.date, 'yyyy-MM-dd');
       const priceKey = `${tx.assetSymbol}:${dateKey}`;
       const priceData = priceResults.get(priceKey);
-      const ptaxData = ptaxResults.get(dateKey);
+      const ptaxData  = ptaxResults.get(dateKey);
 
       const priceUsd = priceData?.priceUsd ?? null;
       const amountNum = parseFloat(tx.amount);
       const valueUsd = priceUsd !== null ? amountNum * priceUsd : null;
-      const ptax = ptaxData?.usdBrl ?? null;
+      const ptax     = ptaxData?.usdBrl ?? null;
       const valueBrl = valueUsd !== null && ptax !== null ? valueUsd * ptax : null;
 
-      await db.transaction.upsert({
+      return {
+        blockchain,
+        walletAddress: wallet,
+        txHash:       tx.txHash,
+        date:         tx.date,
+        type:         tx.type,
+        assetSymbol:  tx.assetSymbol,
+        assetAddress: tx.assetAddress ?? null,
+        amount:       tx.amount,
+        fromAddress:  tx.fromAddress ?? null,
+        toAddress:    tx.toAddress   ?? null,
+        priceUsd,
+        valueUsd,
+        ptax,
+        valueBrl,
+        sourceApi: tx.sourceApi,
+      };
+    });
+
+    // ── 1 query to find which tx hashes already exist ────────────────────
+    const existingHashes = new Set(
+      (await db.transaction.findMany({
         where: {
-          uq_transaction: {
-            blockchain,
-            txHash: tx.txHash,
-            walletAddress: wallet,
-          },
-        },
-        create: {
           blockchain,
           walletAddress: wallet,
-          txHash: tx.txHash,
-          date: tx.date,
-          type: tx.type,
-          assetSymbol: tx.assetSymbol,
-          assetAddress: tx.assetAddress ?? null,
-          amount: tx.amount,
-          fromAddress: tx.fromAddress ?? null,
-          toAddress: tx.toAddress ?? null,
-          priceUsd: priceUsd ?? null,
-          valueUsd: valueUsd ?? null,
-          ptax: ptax ?? null,
-          valueBrl: valueBrl ?? null,
-          sourceApi: tx.sourceApi,
+          txHash: { in: enrichedRecords.map(r => r.txHash) },
         },
-        update: {
-          priceUsd: priceUsd ?? null,
-          valueUsd: valueUsd ?? null,
-          ptax: ptax ?? null,
-          valueBrl: valueBrl ?? null,
-        },
-      });
+        select: { txHash: true },
+      })).map(r => r.txHash)
+    );
+
+    const toCreate = enrichedRecords.filter(r => !existingHashes.has(r.txHash));
+    const toUpdate = enrichedRecords.filter(r =>  existingHashes.has(r.txHash));
+
+    // ── 1 DB call for all new transactions ───────────────────────────────
+    if (toCreate.length > 0) {
+      await db.transaction.createMany({ data: toCreate, skipDuplicates: true });
+    }
+
+    // ── Parallel batched updates for existing transactions ───────────────
+    const UPDATE_BATCH = 20;
+    for (let i = 0; i < toUpdate.length; i += UPDATE_BATCH) {
+      await Promise.all(
+        toUpdate.slice(i, i + UPDATE_BATCH).map(r =>
+          db.transaction.update({
+            where: { uq_transaction: { blockchain, txHash: r.txHash, walletAddress: wallet } },
+            data: { priceUsd: r.priceUsd, valueUsd: r.valueUsd, ptax: r.ptax, valueBrl: r.valueBrl },
+          })
+        )
+      );
     }
 
     // Update search log as success
