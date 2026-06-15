@@ -3,12 +3,12 @@ import { getBinancePrice } from './binance';
 import { getKrakenPrice } from './kraken';
 import { getCoingeckoPrice } from './coingecko';
 import { getPtax } from './ptax';
+import { isWeekend } from '@/lib/utils/date';
 import {
   eachDayOfInterval,
   parseISO,
   startOfDay,
   format,
-  getDay,
   subDays,
 } from 'date-fns';
 import type { QuoteRow } from '@/types';
@@ -70,8 +70,7 @@ export async function getQuoteRange(
   function resolvePtax(dateStr: string): number | null {
     let d = parseISO(dateStr);
     for (let i = 0; i < 10; i++) {
-      const dow = getDay(d);
-      if (dow !== 0 && dow !== 6) {
+      if (!isWeekend(d)) {
         const key = format(d, 'yyyy-MM-dd');
         if (ptaxCache.has(key)) return ptaxCache.get(key)!;
       }

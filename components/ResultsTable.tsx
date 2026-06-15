@@ -71,6 +71,7 @@ export function ResultsTable({ transactions, summary, fromCache, warnings, onRef
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [filter, setFilter] = useState<TxFilter>('all');
   const [page, setPage] = useState(1);
+  const [warningsOpen, setWarningsOpen] = useState(false);
 
   // Reset to page 1 when filter or sort changes
   useEffect(() => { setPage(1); }, [filter, sortField, sortDir]);
@@ -169,16 +170,21 @@ export function ResultsTable({ transactions, summary, fromCache, warnings, onRef
         )}
 
         {warnings.length > 0 && (
-          <details className="text-xs">
-            <summary className="cursor-pointer inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 list-none">
+          <div className="relative text-xs">
+            <button
+              onClick={() => setWarningsOpen(o => !o)}
+              className="cursor-pointer inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1"
+            >
               ⚠ {warnings.length} {warnings.length === 1 ? 'aviso' : 'avisos'}
-            </summary>
-            <div className="absolute mt-1 bg-white border border-[#c2c7d1] rounded-lg shadow-sm p-3 max-w-xs z-10">
-              <ul className="text-xs text-[#42474f] space-y-1">
-                {warnings.map((w, i) => <li key={i}>· {w}</li>)}
-              </ul>
-            </div>
-          </details>
+            </button>
+            {warningsOpen && (
+              <div className="absolute left-0 top-full mt-1 bg-white border border-[#c2c7d1] rounded-lg shadow-sm p-3 min-w-[260px] max-w-sm z-10">
+                <ul className="text-xs text-[#42474f] space-y-1">
+                  {warnings.map((w, i) => <li key={i}>· {w}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
 
         <span className="ml-auto text-xs text-[#727780]">

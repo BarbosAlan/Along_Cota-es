@@ -33,8 +33,25 @@ export const searchRequestSchema = z
     path: ['endDate'],
   });
 
+const enrichedTransactionRowSchema = z.object({
+  id: z.string(),
+  txHash: z.string(),
+  date: z.string(),
+  type: z.enum(['receive', 'send', 'swap', 'fee', 'unknown']),
+  assetSymbol: z.string(),
+  amount: z.string(),
+  priceUsd: z.number().nullable(),
+  valueUsd: z.number().nullable(),
+  ptax: z.number().nullable(),
+  valueBrl: z.number().nullable(),
+  fromAddress: z.string().nullable(),
+  toAddress: z.string().nullable(),
+  sourceApi: z.string(),
+  blockchain: z.enum(['ethereum', 'polygon', 'bitcoin', 'solana', 'tron', 'terra', 'cardano', 'xrp', 'lisk']),
+});
+
 export const exportRequestSchema = z.object({
-  transactions: z.array(z.any()),
+  transactions: z.array(enrichedTransactionRowSchema),
   format: z.enum(['xlsx', 'csv']),
   walletAddress: z.string(),
 });
@@ -61,8 +78,17 @@ export const quotesRequestSchema = z
     { message: 'Período máximo de 366 dias', path: ['endDate'] }
   );
 
+const quoteRowSchema = z.object({
+  date: z.string(),
+  symbol: z.string(),
+  priceUsd: z.number().nullable(),
+  ptax: z.number().nullable(),
+  priceBrl: z.number().nullable(),
+  priceSource: z.string().nullable(),
+});
+
 export const quotesExportRequestSchema = z.object({
-  quotes: z.array(z.any()),
+  quotes: z.array(quoteRowSchema),
   symbol: z.string(),
   format: z.enum(['xlsx', 'csv']),
 });

@@ -1,15 +1,11 @@
 import { db } from '@/lib/db';
 import { PtaxNotFoundError, fetchWithTimeout } from '@/lib/errors';
-import { parseISO, subDays, getDay, format } from 'date-fns';
+import { parseISO, subDays, format } from 'date-fns';
+import { isWeekend } from '@/lib/utils/date';
 import type { PtaxRate } from '@/types';
 
 const PTAX_BASE_URL =
   'https://olinda.bcb.gov.br/olinda/service/PTAX/version/v1/odata';
-
-function isWeekend(date: Date): boolean {
-  const day = getDay(date);
-  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
-}
 
 async function fetchPtaxFromApi(date: Date): Promise<number | null> {
   // PTAX API requires MM-DD-YYYY format

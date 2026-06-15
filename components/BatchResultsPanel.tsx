@@ -26,7 +26,17 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 10)}…${addr.slice(-6)}`;
 }
 
-function WalletRow({ result, onView }: { result: BatchWalletResult; onView: () => void }) {
+function WalletRow({
+  result,
+  onView,
+  onRetry,
+  isRetrying,
+}: {
+  result: BatchWalletResult;
+  onView: () => void;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   function copy() {
@@ -86,9 +96,22 @@ function WalletRow({ result, onView }: { result: BatchWalletResult; onView: () =
             </div>
           )}
 
-          {/* Error message */}
-          {!isOk && result.error && (
-            <p className="text-xs text-[#93000a] mt-1">{result.error}</p>
+          {/* Error message + retry */}
+          {!isOk && (
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {result.error && (
+                <p className="text-xs text-[#93000a]">{result.error}</p>
+              )}
+              {onRetry && (
+                <button
+                  onClick={onRetry}
+                  disabled={isRetrying}
+                  className="text-[11px] font-medium text-[#0f4c81] border border-[#0f4c81]/30 rounded px-2 py-0.5 hover:bg-[#f0f3ff] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isRetrying ? 'Tentando…' : 'Tentar novamente'}
+                </button>
+              )}
+            </div>
           )}
 
           {/* Warnings */}
@@ -124,9 +147,11 @@ function WalletRow({ result, onView }: { result: BatchWalletResult; onView: () =
 interface BatchResultsPanelProps {
   data: BatchResponse;
   onViewWallet: (address: string) => void;
+  onRetry?: (address: string) => void;
+  retryingAddresses?: Set<string>;
 }
 
-export function BatchResultsPanel({ data, onViewWallet }: BatchResultsPanelProps) {
+export function BatchResultsPanel({ data, onViewWallet, onRetry, retryingAddresses }: BatchResultsPanelProps) {
   const { results, combined } = data;
 
   const allTransactions: EnrichedTransactionRow[] = results
@@ -168,6 +193,8 @@ export function BatchResultsPanel({ data, onViewWallet }: BatchResultsPanelProps
             key={i}
             result={r}
             onView={() => onViewWallet(r.address)}
+            onRetry={onRetry ? () => onRetry(r.address) : undefined}
+            isRetrying={retryingAddresses?.has(r.address)}
           />
         ))}
       </div>

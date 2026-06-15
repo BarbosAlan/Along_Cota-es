@@ -70,6 +70,7 @@ export interface SearchRequest {
   walletAddress: string;
   startDate: string;
   endDate: string;
+  forceRefresh?: boolean;
 }
 
 export interface EnrichedTransactionRow {

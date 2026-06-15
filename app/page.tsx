@@ -109,6 +109,8 @@ function NavLink({
   );
 }
 
+const VALID_NAV: NavItem[] = ['dashboard', 'transactions', 'batch', 'quotes', 'history', 'settings'];
+
 export default function HomePage() {
   const [activeNav, setActiveNav] = useState<NavItem>('dashboard');
 
@@ -126,6 +128,8 @@ export default function HomePage() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchResults, setBatchResults] = useState<BatchResponse | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [batchLastQuery, setBatchLastQuery] = useState<BatchFormData | null>(null);
+  const [batchRetrying, setBatchRetrying] = useState<Set<string>>(new Set());
 
   const [historyLogs, setHistoryLogs] = useState<HistoryLog[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -133,7 +137,25 @@ export default function HomePage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
 
-  useEffect(() => { loadDashboard(); }, []); // load on mount since it's the default tab
+  useEffect(() => {
+    const saved = localStorage.getItem('activeNav') as NavItem | null;
+    if (saved && VALID_NAV.includes(saved)) {
+      setActiveNav(saved);
+      if (saved === 'history') {
+        setHistoryLoading(true);
+        fetch('/api/history')
+          .then(r => r.json())
+          .then(data => setHistoryLogs(data.logs))
+          .catch(() => setHistoryLogs([]))
+          .finally(() => setHistoryLoading(false));
+      } else if (saved === 'dashboard') {
+        loadDashboard();
+      }
+    } else {
+      loadDashboard();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function loadDashboard() {
     setDashboardLoading(true);
@@ -146,6 +168,7 @@ export default function HomePage() {
 
   function navigateTo(nav: NavItem) {
     setActiveNav(nav);
+    localStorage.setItem('activeNav', nav);
     if (nav === 'dashboard') {
       loadDashboard();
     }
@@ -205,6 +228,7 @@ export default function HomePage() {
     setBatchLoading(true);
     setBatchError(null);
     setBatchResults(null);
+    setBatchLastQuery(data);
     try {
       const res = await fetch('/api/batch', {
         method: 'POST',
@@ -218,6 +242,41 @@ export default function HomePage() {
       setBatchError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
       setBatchLoading(false);
+    }
+  }
+
+  async function handleRetryBatchWallet(address: string) {
+    if (!batchLastQuery || !batchResults) return;
+    setBatchRetrying(prev => new Set(prev).add(address));
+    try {
+      const res = await fetch('/api/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          addresses: [address],
+          startDate: batchLastQuery.startDate,
+          endDate: batchLastQuery.endDate,
+        }),
+      });
+      const json = await res.json() as BatchResponse;
+      if (!res.ok) return;
+      const newResult = json.results[0];
+      if (!newResult) return;
+      setBatchResults(prev => {
+        if (!prev) return prev;
+        const newResults = prev.results.map(r => r.address === address ? newResult : r);
+        const successCount = newResults.filter(r => r.status === 'success').length;
+        const errorCount = newResults.filter(r => r.status === 'error').length;
+        const totalTransactions = newResults.reduce((sum, r) => sum + r.transactions.length, 0);
+        const totalValueBrl = newResults.reduce((sum, r) => r.summary.totalValueBrl !== null ? sum + r.summary.totalValueBrl : sum, 0);
+        const totalValueUsd = newResults.reduce((sum, r) => r.summary.totalValueUsd !== null ? sum + r.summary.totalValueUsd : sum, 0);
+        return {
+          results: newResults,
+          combined: { ...prev.combined, successCount, errorCount, totalTransactions, totalValueBrl, totalValueUsd },
+        };
+      });
+    } finally {
+      setBatchRetrying(prev => { const s = new Set(prev); s.delete(address); return s; });
     }
   }
 
@@ -473,6 +532,8 @@ export default function HomePage() {
                 <BatchResultsPanel
                   data={batchResults}
                   onViewWallet={handleViewBatchWallet}
+                  onRetry={handleRetryBatchWallet}
+                  retryingAddresses={batchRetrying}
                 />
               )}
 
