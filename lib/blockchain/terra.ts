@@ -60,59 +60,18 @@ export class TerraAdapter implements BlockchainAdapter {
   }
 
   async getTransactions(
-    walletAddress: string,
-    startDate: Date,
-    endDate: Date,
+    _walletAddress: string,
+    _startDate: Date,
+    _endDate: Date,
     _chain: BlockchainId
   ): Promise<RawTransaction[]> {
-    const startDay = startOfDay(startDate);
-    const endDay = endOfDay(endDate);
-    const transactions: RawTransaction[] = [];
-    let offset: number | undefined;
-    let reachedStart = false;
-
-    while (!reachedStart) {
-      const data = await this.fetchPage(walletAddress, offset);
-      if (!data.txs?.length) break;
-
-      for (const tx of data.txs) {
-        const date = parseISO(tx.timestamp);
-
-        if (isAfter(date, endDay)) continue;
-        if (isBefore(date, startDay)) {
-          reachedStart = true;
-          break;
-        }
-
-        for (const msg of tx.tx.body.messages) {
-          if (msg['@type'] !== '/cosmos.bank.v1beta1.MsgSend') continue;
-
-          const amounts = Array.isArray(msg.amount) ? msg.amount : [];
-          const luna = amounts.find(a => a.denom === 'uluna');
-          if (!luna || luna.amount === '0') continue;
-
-          const from = msg.from_address ?? '';
-          const to = msg.to_address ?? '';
-          const type = from.toLowerCase() === walletAddress.toLowerCase() ? 'send' : 'receive';
-
-          transactions.push({
-            txHash: tx.txhash,
-            date,
-            type,
-            assetSymbol: 'LUNA',
-            amount: ulunaToLuna(luna.amount),
-            fromAddress: from,
-            toAddress: to,
-            sourceApi: 'terra_fcd',
-          });
-        }
-      }
-
-      if (!data.next || reachedStart) break;
-      offset = data.next;
-      await new Promise(r => setTimeout(r, 300));
-    }
-
-    return transactions;
+    // Terra FCD (phoenix-fcd.terra.dev) was decommissioned by Terraform Labs.
+    // Non-retryable so the caller marks this chain as error immediately.
+    throw new BlockchainApiError(
+      'terra',
+      503,
+      'Fonte de dados Terra indisponível: endpoint FCD desativado. Aguardando integração com novo provedor.',
+      false
+    );
   }
 }

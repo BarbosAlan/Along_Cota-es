@@ -80,11 +80,12 @@ export function BatchSearchForm({ onSearch, isLoading }: BatchSearchFormProps) {
     e.preventDefault();
     if (addresses.length === 0) return;
     if (overLimit) return;
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     if (startDate > endDate) {
       setDateError('A data inicial deve ser anterior ou igual à data final');
       return;
     }
-    if (endDate > today) {
+    if (endDate > todayStr) {
       setDateError('A data final não pode ser futura');
       return;
     }
@@ -97,11 +98,12 @@ export function BatchSearchForm({ onSearch, isLoading }: BatchSearchFormProps) {
 
       {/* Textarea */}
       <div>
-        <label className={labelClass}>
+        <label htmlFor="bsf-addresses" className={labelClass}>
           Endereços das Carteiras
           <span className="ml-1 font-normal text-[#727780]">(um por linha ou separados por vírgula — máximo 10)</span>
         </label>
         <textarea
+          id="bsf-addresses"
           value={raw}
           onChange={e => setRaw(e.target.value)}
           placeholder={`Cole os endereços aqui, por exemplo:\n0xAbc123...\nbc1qxy...\nAddr1...\n\nA rede de cada endereço é detectada automaticamente.`}

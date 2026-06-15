@@ -111,9 +111,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { addresses, startDate, endDate, forceRefresh } = parsed.data;
 
-  const settled = await Promise.allSettled(
-    addresses.map(addr => processWallet(addr, startDate, endDate, forceRefresh ?? false)),
-  );
+  const WALLET_CONCURRENCY = 5;
+  const settled: PromiseSettledResult<BatchWalletResult>[] = [];
+  for (let i = 0; i < addresses.length; i += WALLET_CONCURRENCY) {
+    const batch = await Promise.allSettled(
+      addresses.slice(i, i + WALLET_CONCURRENCY).map(addr =>
+        processWallet(addr, startDate, endDate, forceRefresh ?? false)
+      )
+    );
+    settled.push(...batch);
+  }
 
   const results: BatchWalletResult[] = settled.map((r, i) => {
     if (r.status === 'fulfilled') return r.value;

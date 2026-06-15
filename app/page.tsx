@@ -177,7 +177,7 @@ export default function HomePage() {
     if (nav === 'dashboard') {
       loadDashboard();
     }
-    if (nav === 'history' && historyLogs === null) {
+    if (nav === 'history') {
       setHistoryLoading(true);
       fetch('/api/history')
         .then(r => r.json())

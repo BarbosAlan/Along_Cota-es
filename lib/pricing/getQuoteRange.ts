@@ -121,12 +121,17 @@ export async function getQuoteRange(
     return entry && entry.priceBrl === null && resolvePtax(d) !== null;
   });
 
-  for (const dateStr of needsBrlPatch) {
-    const entry = priceCache.get(dateStr)!;
-    const ptaxVal = resolvePtax(dateStr)!;
-    const priceBrl = entry.priceUsd * ptaxVal;
-    entry.priceBrl = priceBrl;
-    await persistQuote(upper, startOfDay(parseISO(dateStr)), entry.priceUsd, priceBrl, entry.source);
+  const BRL_PATCH_CONCURRENCY = 5;
+  for (let i = 0; i < needsBrlPatch.length; i += BRL_PATCH_CONCURRENCY) {
+    await Promise.all(
+      needsBrlPatch.slice(i, i + BRL_PATCH_CONCURRENCY).map(async dateStr => {
+        const entry = priceCache.get(dateStr)!;
+        const ptaxVal = resolvePtax(dateStr)!;
+        const priceBrl = entry.priceUsd * ptaxVal;
+        entry.priceBrl = priceBrl;
+        await persistQuote(upper, startOfDay(parseISO(dateStr)), entry.priceUsd, priceBrl, entry.source);
+      })
+    );
   }
 
   // ── 7. Build response rows ────────────────────────────────────────────────

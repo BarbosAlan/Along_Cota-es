@@ -80,8 +80,9 @@ export function SearchForm({ onSearch, isLoading, defaultValues }: SearchFormPro
     >
       {/* Wallet address */}
       <div>
-        <label className={labelClass}>Endereço da Carteira</label>
+        <label htmlFor="sf-wallet" className={labelClass}>Endereço da Carteira</label>
         <input
+          id="sf-wallet"
           {...register('walletAddress')}
           type="text"
           placeholder="Cole o endereço da carteira…"

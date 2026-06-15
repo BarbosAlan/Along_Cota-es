@@ -87,7 +87,7 @@ export class LiskAdapter implements BlockchainAdapter {
         const to = tx.params.recipientAddress ?? '';
         const type = from.toLowerCase() === walletAddress.toLowerCase() ? 'send' : 'receive';
         const tokenId = tx.params.tokenID ?? NATIVE_TOKEN_ID;
-        const symbol = tokenId === NATIVE_TOKEN_ID ? 'LSK' : tokenId;
+        const symbol = tokenId === NATIVE_TOKEN_ID ? 'LSK' : 'UNKNOWN';
 
         transactions.push({
           txHash: tx.id,

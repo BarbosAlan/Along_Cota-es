@@ -188,9 +188,9 @@ export function BatchResultsPanel({ data, onViewWallet, onRetry, retryingAddress
 
       {/* Per-wallet results */}
       <div className="space-y-2">
-        {results.map((r, i) => (
+        {results.map((r) => (
           <WalletRow
-            key={i}
+            key={r.address}
             result={r}
             onView={() => onViewWallet(r.address)}
             onRetry={onRetry ? () => onRetry(r.address) : undefined}

@@ -16,7 +16,7 @@ interface ResultsTableProps {
 }
 
 type TxFilter = 'all' | 'receive' | 'send' | 'fee';
-
+1
 const PAGE_SIZE = 50;
 
 function truncateMiddle(str: string, chars = 7): string {

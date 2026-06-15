@@ -96,8 +96,9 @@ export function QuotesForm({ onSearch, isLoading }: QuotesFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Symbol + ticker chips */}
         <div>
-          <label className={labelClass}>Moeda / Token</label>
+          <label htmlFor="qf-symbol" className={labelClass}>Moeda / Token</label>
           <input
+            id="qf-symbol"
             {...register('symbol')}
             type="text"
             placeholder="Ex: BTC, ETH, PEPE…"
