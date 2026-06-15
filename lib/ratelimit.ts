@@ -4,6 +4,14 @@ import { Redis } from '@upstash/redis';
 // ── In-memory fallback (dev / single-instance) ────────────────────────────
 interface WindowEntry { count: number; resetAt: number }
 const store = new Map<string, WindowEntry>();
+const MAX_STORE_SIZE = 5_000;
+
+function pruneExpired(): void {
+  const now = Date.now();
+  for (const [key, entry] of store) {
+    if (entry.resetAt < now) store.delete(key);
+  }
+}
 
 function memCheck(
   key: string,
@@ -14,6 +22,7 @@ function memCheck(
   const entry = store.get(key);
   if (!entry || entry.resetAt < now) {
     store.set(key, { count: 1, resetAt: now + windowMs });
+    if (store.size > MAX_STORE_SIZE) pruneExpired();
     return { allowed: true, remaining: limit - 1, resetAt: now + windowMs, limit };
   }
   entry.count++;
@@ -40,6 +49,8 @@ export const RULES: Record<string, RuleConfig> = {
   batch:        { limit: 3,  windowMs: 60_000,  upstashWindow: '60 s' },
   settings:     { limit: 5,  windowMs: 300_000, upstashWindow: '300 s' },
   read:         { limit: 60, windowMs: 60_000,  upstashWindow: '60 s' },
+  // Global CoinGecko quota shared across all requests (25 = free tier 30 minus buffer)
+  coingecko:    { limit: 25, windowMs: 60_000,  upstashWindow: '60 s' },
 };
 
 // One Ratelimit instance per rule, created once at module load
