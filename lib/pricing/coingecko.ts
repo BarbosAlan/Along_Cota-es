@@ -47,11 +47,19 @@ const SYMBOL_TO_ID: Record<string, string> = {
   '1INCH': '1inch',
 };
 
-// Token bucket for rate limiting (30 req/min free tier)
+// Token bucket for rate limiting (30 req/min free tier).
+// Uses a promise chain to serialize acquisitions and prevent the race
+// where multiple concurrent waiters each independently reset the counter.
 let tokens = 30;
 let lastRefill = Date.now();
+let acquiring: Promise<void> = Promise.resolve();
 
 async function acquireToken(): Promise<void> {
+  const prev = acquiring;
+  let release!: () => void;
+  acquiring = new Promise<void>(r => { release = r; });
+  await prev;
+
   const now = Date.now();
   const elapsed = now - lastRefill;
   if (elapsed >= 60_000) {
@@ -59,12 +67,13 @@ async function acquireToken(): Promise<void> {
     lastRefill = now;
   }
   if (tokens <= 0) {
-    const wait = 60_000 - elapsed;
-    await new Promise(r => setTimeout(r, wait));
+    const wait = 60_000 - (Date.now() - lastRefill);
+    await new Promise(r => setTimeout(r, Math.max(0, wait)));
     tokens = 30;
     lastRefill = Date.now();
   }
   tokens--;
+  release();
 }
 
 function getBaseUrl(): string {
