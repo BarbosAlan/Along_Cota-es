@@ -17,6 +17,33 @@ const CHAIN_IDS: Partial<Record<BlockchainId, number>> = {
 const BASE_URL = 'https://api.etherscan.io/v2/api';
 const PAGE_SIZE = 200; // keep page × offset well under the 10k Etherscan cap
 
+// Etherscan free tier: 5 req/s. 4 req/s gives a safe margin.
+// Since EtherscanAdapter is a singleton, all chains share this queue.
+const GAP_MS = 250;
+
+class RequestQueue {
+  private readonly queue: Array<() => void> = [];
+  private draining = false;
+
+  wait(): Promise<void> {
+    return new Promise(resolve => {
+      this.queue.push(resolve);
+      if (!this.draining) this.drain();
+    });
+  }
+
+  private async drain() {
+    this.draining = true;
+    while (this.queue.length > 0) {
+      this.queue.shift()!();
+      if (this.queue.length > 0) {
+        await new Promise(r => setTimeout(r, GAP_MS));
+      }
+    }
+    this.draining = false;
+  }
+}
+
 interface EtherscanTx {
   hash: string;
   timeStamp: string;
@@ -50,6 +77,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
   readonly supportedChains: BlockchainId[] = ['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'optimism'];
 
   private readonly apiKey: string;
+  private readonly queue = new RequestQueue();
 
   constructor(config: { apiKey?: string }) {
     this.apiKey = config.apiKey ?? '';
@@ -77,6 +105,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
       closest,
     });
     try {
+      await this.queue.wait();
       const res = await fetchWithTimeout(url, { cache: 'no-store' });
       const text = await res.text();
       const data: { status: string; result: string; message?: string } = JSON.parse(text);
@@ -92,6 +121,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
     chain: BlockchainId
   ): Promise<T[]> {
     const res = await withRetry(async () => {
+      await this.queue.wait();
       const r = await fetchWithTimeout(url, { next: { revalidate: 0 } });
       if (r.status === 429) {
         throw new BlockchainApiError(chain, 429, 'Rate limited', true);
@@ -106,7 +136,6 @@ export class EtherscanAdapter implements BlockchainAdapter {
 
     if (data.status === '0') {
       if (data.message === 'No transactions found') return [];
-      // Include both message and result for debugging
       throw new BlockchainApiError(
         chain, 200,
         `${data.message ?? 'NOTOK'}: ${String(data.result)}`,
@@ -144,12 +173,9 @@ export class EtherscanAdapter implements BlockchainAdapter {
       }
 
       if (batch.length < PAGE_SIZE) break;
-      if (page >= MAX_PAGE) break; // stop before exceeding 10k limit
+      if (page >= MAX_PAGE) break;
 
       page++;
-
-      // Etherscan free tier: 3 req/s — 400ms gap keeps us safely under
-      await new Promise(r => setTimeout(r, 400));
     }
 
     return results;
@@ -170,15 +196,12 @@ export class EtherscanAdapter implements BlockchainAdapter {
     const endDay = endOfDay(endDate);
 
     // Convert date range to block numbers to avoid the 10k result-window limit
-    // Sequential to respect the 3 req/s Etherscan free-tier limit
     const startBlock = await this.getBlockByTimestamp(
       chainId, Math.floor(startDay.getTime() / 1000), 'after'
     );
-    await new Promise(r => setTimeout(r, 400));
     const endBlock = await this.getBlockByTimestamp(
       chainId, Math.floor(endDay.getTime() / 1000), 'before'
     );
-    await new Promise(r => setTimeout(r, 400));
 
     const baseParams = {
       module: 'account',
@@ -188,12 +211,10 @@ export class EtherscanAdapter implements BlockchainAdapter {
       sort: 'asc',
     };
 
-    // Sequential with gap — Etherscan free tier is 3 req/s
     const nativeTxs = await this.fetchAllPages<EtherscanTx>(chainId, chain, {
       ...baseParams,
       action: 'txlist',
     });
-    await new Promise(r => setTimeout(r, 500));
     const tokenTxs = await this.fetchAllPages<EtherscanTokenTx>(chainId, chain, {
       ...baseParams,
       action: 'tokentx',
@@ -204,7 +225,6 @@ export class EtherscanAdapter implements BlockchainAdapter {
 
     const transactions: RawTransaction[] = [];
 
-    // Process native transactions
     for (const tx of nativeTxs) {
       if (tx.isError === '1') continue;
       if (tx.value === '0') continue;
@@ -213,7 +233,6 @@ export class EtherscanAdapter implements BlockchainAdapter {
       if (isBefore(date, startDay) || isAfter(date, endDay)) continue;
 
       const from = tx.from.toLowerCase();
-      const to = tx.to.toLowerCase();
       const type = from === wallet ? 'send' : 'receive';
 
       transactions.push({
@@ -229,13 +248,11 @@ export class EtherscanAdapter implements BlockchainAdapter {
       });
     }
 
-    // Process ERC-20 token transfers
     for (const tx of tokenTxs) {
       const date = fromUnixTime(parseInt(tx.timeStamp));
       if (isBefore(date, startDay) || isAfter(date, endDay)) continue;
 
       const from = tx.from.toLowerCase();
-      const to = tx.to.toLowerCase();
       const type = from === wallet ? 'send' : 'receive';
 
       const decimals = parseInt(tx.tokenDecimal) || 18;
@@ -270,6 +287,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
     });
 
     try {
+      await this.queue.wait();
       const res = await fetchWithTimeout(url, { next: { revalidate: 86400 } });
       if (!res.ok) return undefined;
 
