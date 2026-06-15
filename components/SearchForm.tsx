@@ -20,7 +20,11 @@ interface SearchFormProps {
       
 const CHAIN_INFO: Record<string, { abbr: string; color: string }> = {
   ethereum: { abbr: 'ETH',  color: '#627EEA' },
-  polygon:  { abbr: 'MATIC',color: '#8247E5' },
+  polygon:  { abbr: 'POL',  color: '#8247E5' },
+  bnb:      { abbr: 'BNB',  color: '#F3BA2F' },
+  arbitrum: { abbr: 'ARB',  color: '#213147' },
+  base:     { abbr: 'BASE', color: '#0052FF' },
+  optimism: { abbr: 'OP',   color: '#FF0420' },
   bitcoin:  { abbr: 'BTC',  color: '#F7931A' },
   solana:   { abbr: 'SOL',  color: '#9945FF' },
   tron:     { abbr: 'TRX',  color: '#EF0027' },

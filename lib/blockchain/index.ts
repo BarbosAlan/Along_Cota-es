@@ -12,12 +12,16 @@ import { LiskAdapter } from './lisk';
 function buildRegistry(): Map<BlockchainId, BlockchainAdapter> {
   const registry = new Map<BlockchainId, BlockchainAdapter>();
 
-  // Ethereum & Polygon share the Etherscan V2 adapter (different chainid)
+  // Ethereum, Polygon, BNB Chain, Arbitrum, Base and Optimism all use Etherscan V2
   const etherscan = new EtherscanAdapter({
     apiKey: process.env.ETHERSCAN_API_KEY,
   });
   registry.set('ethereum', etherscan);
   registry.set('polygon', etherscan);
+  registry.set('bnb', etherscan);
+  registry.set('arbitrum', etherscan);
+  registry.set('base', etherscan);
+  registry.set('optimism', etherscan);
 
   // Bitcoin via Blockstream (no API key needed)
   registry.set('bitcoin', new BlockstreamAdapter());

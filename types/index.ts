@@ -1,6 +1,10 @@
 export type BlockchainId =
   | 'ethereum'
   | 'polygon'
+  | 'bnb'
+  | 'arbitrum'
+  | 'base'
+  | 'optimism'
   | 'bitcoin'
   | 'solana'
   | 'tron'
@@ -165,6 +169,10 @@ export interface DashboardData {
 export const BLOCKCHAIN_LABELS: Record<BlockchainId, string> = {
   ethereum: 'Ethereum',
   polygon: 'Polygon',
+  bnb: 'BNB Chain',
+  arbitrum: 'Arbitrum',
+  base: 'Base',
+  optimism: 'Optimism',
   bitcoin: 'Bitcoin',
   solana: 'Solana',
   tron: 'Tron',
@@ -212,6 +220,10 @@ export interface BatchResponse {
 export const BLOCKCHAIN_EXPLORERS: Record<BlockchainId, string> = {
   ethereum: 'https://etherscan.io/tx/',
   polygon: 'https://polygonscan.com/tx/',
+  bnb: 'https://bscscan.com/tx/',
+  arbitrum: 'https://arbiscan.io/tx/',
+  base: 'https://basescan.org/tx/',
+  optimism: 'https://optimistic.etherscan.io/tx/',
   bitcoin: 'https://blockstream.info/tx/',
   solana: 'https://solscan.io/tx/',
   tron: 'https://tronscan.org/#/transaction/',

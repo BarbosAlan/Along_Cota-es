@@ -8,6 +8,10 @@ import { fromUnixTime, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns'
 const CHAIN_IDS: Partial<Record<BlockchainId, number>> = {
   ethereum: 1,
   polygon: 137,
+  bnb: 56,
+  arbitrum: 42161,
+  base: 8453,
+  optimism: 10,
 };
 
 const BASE_URL = 'https://api.etherscan.io/v2/api';
@@ -43,7 +47,7 @@ interface EtherscanResponse<T> {
 
 export class EtherscanAdapter implements BlockchainAdapter {
   readonly name = 'Etherscan V2';
-  readonly supportedChains: BlockchainId[] = ['ethereum', 'polygon'];
+  readonly supportedChains: BlockchainId[] = ['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'optimism'];
 
   private readonly apiKey: string;
 
@@ -195,7 +199,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
       action: 'tokentx',
     });
 
-    const native = chain === 'polygon' ? 'POL' : 'ETH';
+    const native = chain === 'polygon' ? 'POL' : chain === 'bnb' ? 'BNB' : 'ETH';
     const nativeDecimals = 18;
 
     const transactions: RawTransaction[] = [];

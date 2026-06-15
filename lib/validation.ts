@@ -4,6 +4,10 @@ import { isValid, parseISO, isAfter } from 'date-fns';
 const BLOCKCHAIN_IDS = [
   'ethereum',
   'polygon',
+  'bnb',
+  'arbitrum',
+  'base',
+  'optimism',
   'bitcoin',
   'solana',
   'tron',
@@ -47,7 +51,7 @@ const enrichedTransactionRowSchema = z.object({
   fromAddress: z.string().nullable(),
   toAddress: z.string().nullable(),
   sourceApi: z.string(),
-  blockchain: z.enum(['ethereum', 'polygon', 'bitcoin', 'solana', 'tron', 'terra', 'cardano', 'xrp', 'lisk']),
+  blockchain: z.enum(['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'optimism', 'bitcoin', 'solana', 'tron', 'terra', 'cardano', 'xrp', 'lisk']),
 });
 
 export const exportRequestSchema = z.object({

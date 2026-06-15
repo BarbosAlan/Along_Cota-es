@@ -1,6 +1,6 @@
 import type { BlockchainId } from '@/types';
 
-const LOWERCASE_CHAINS = new Set<BlockchainId>(['ethereum', 'polygon']);
+const LOWERCASE_CHAINS = new Set<BlockchainId>(['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'optimism']);
 
 export function normalizeAddress(address: string, blockchain: BlockchainId): string {
   return LOWERCASE_CHAINS.has(blockchain) ? address.toLowerCase() : address;
@@ -10,8 +10,8 @@ export function detectBlockchains(address: string): BlockchainId[] {
   const addr = address.trim();
   if (!addr) return [];
 
-  // EVM: Ethereum and Polygon share the same address format
-  if (/^0x[0-9a-fA-F]{40}$/.test(addr)) return ['ethereum', 'polygon'];
+  // EVM: all L1/L2 chains share the same address format
+  if (/^0x[0-9a-fA-F]{40}$/.test(addr)) return ['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'optimism'];
 
   // Bitcoin: P2PKH (1...), P2SH (3...), Bech32 (bc1...)
   if (/^[13][1-9A-HJ-NP-Za-km-z]{24,33}$/.test(addr)) return ['bitcoin'];
