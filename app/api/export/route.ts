@@ -13,9 +13,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const dateTag = format(new Date(), 'yyyy-MM-dd');
 
-  // Check if this is a quotes export
-  const quotesCheck = quotesExportRequestSchema.safeParse(body);
-  if (quotesCheck.success) {
+  const isQuotesExport =
+    typeof body === 'object' && body !== null && 'quotes' in body;
+
+  if (isQuotesExport) {
+    const quotesCheck = quotesExportRequestSchema.safeParse(body);
+    if (!quotesCheck.success) {
+      return NextResponse.json(
+        { error: 'VALIDATION_ERROR', details: quotesCheck.error.issues },
+        { status: 400 }
+      );
+    }
     const { quotes, symbol, format: fmt } = quotesCheck.data;
 
     if (fmt === 'xlsx') {

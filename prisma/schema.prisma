@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Transaction {
@@ -84,7 +83,7 @@ model SearchLog {
   errorMessage      String?  @map("error_message")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  @@index([blockchain, walletAddress])
+  @@unique([blockchain, walletAddress, startDate, endDate], name: "uq_search_log")
   @@index([walletAddress, blockchain, startDate, endDate, status])
   @@map("search_logs")
 }

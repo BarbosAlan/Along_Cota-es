@@ -31,10 +31,7 @@ export async function GET(): Promise<NextResponse> {
         by: ['type'],
         _count: { id: true },
       }),
-      db.transaction.findMany({
-        select: { walletAddress: true },
-        distinct: ['walletAddress'],
-      }),
+      db.$queryRaw<[{ count: bigint }]>`SELECT COUNT(DISTINCT wallet_address)::bigint AS count FROM transactions`,
       db.quote.count(),
       db.quote.findMany({
         select: { symbol: true },
@@ -67,7 +64,7 @@ export async function GET(): Promise<NextResponse> {
           count: b._count.id,
         })),
       },
-      wallets: { total: walletRows.length },
+      wallets: { total: Number(walletRows[0].count) },
       quotes: {
         total: quoteCount,
         uniqueSymbols: quoteSymbols.length,

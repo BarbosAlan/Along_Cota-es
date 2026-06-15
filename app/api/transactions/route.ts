@@ -66,14 +66,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Fetch each chain in parallel; tolerate partial failures
   const fetchResults = await Promise.allSettled(
     chains.map(async (chain) => {
-      const searchLog = await db.searchLog.create({
-        data: {
+      const normalizedWallet = normalizeAddress(walletAddress, chain);
+      const start = startOfDay(parseISO(startDate));
+      const end = endOfDay(parseISO(endDate));
+      const searchLog = await db.searchLog.upsert({
+        where: {
+          uq_search_log: {
+            blockchain: chain,
+            walletAddress: normalizedWallet,
+            startDate: start,
+            endDate: end,
+          },
+        },
+        create: {
           blockchain: chain,
-          walletAddress: normalizeAddress(walletAddress, chain),
-          startDate: startOfDay(parseISO(startDate)),
-          endDate: endOfDay(parseISO(endDate)),
+          walletAddress: normalizedWallet,
+          startDate: start,
+          endDate: end,
           status: 'pending',
         },
+        update: { status: 'pending', errorMessage: null },
       });
       await fetchAndEnrichTransactions(chain, walletAddress, startDate, endDate, searchLog.id);
       return searchLog.id;

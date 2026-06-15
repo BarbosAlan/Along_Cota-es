@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { batchRequestSchema } from '@/lib/validation';
 import {
@@ -38,7 +38,7 @@ async function processWallet(
       summary: EMPTY_SUMMARY,
       fromCache: false,
       warnings: [],
-      error: 'Formato de endereço não reconhecido',
+      error: 'Formato de endereÃ§o nÃ£o reconhecido',
     };
   }
 
@@ -53,14 +53,26 @@ async function processWallet(
 
   const fetchResults = await Promise.allSettled(
     chains.map(async (chain) => {
-      const searchLog = await db.searchLog.create({
-        data: {
+      const normalizedWallet = normalizeAddress(address, chain);
+      const start = startOfDay(parseISO(startDate));
+      const end = endOfDay(parseISO(endDate));
+      const searchLog = await db.searchLog.upsert({
+        where: {
+          uq_search_log: {
+            blockchain: chain,
+            walletAddress: normalizedWallet,
+            startDate: start,
+            endDate: end,
+          },
+        },
+        create: {
           blockchain: chain,
-          walletAddress: normalizeAddress(address, chain),
-          startDate: startOfDay(parseISO(startDate)),
-          endDate: endOfDay(parseISO(endDate)),
+          walletAddress: normalizedWallet,
+          startDate: start,
+          endDate: end,
           status: 'pending',
         },
+        update: { status: 'pending', errorMessage: null },
       });
       await fetchAndEnrichTransactions(chain, address, startDate, endDate, searchLog.id);
     }),
