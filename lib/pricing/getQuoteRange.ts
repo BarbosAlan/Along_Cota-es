@@ -155,21 +155,34 @@ async function fetchPriceFromApi(
   symbol: string,
   date: string
 ): Promise<{ priceUsd: number; source: string } | null> {
+  const sourceErrors: Record<string, string> = {};
+
   try {
     const price = await getBinancePrice(symbol, date);
     if (price !== null) return { priceUsd: price, source: 'binance' };
-  } catch { /* fall through */ }
+  } catch (err) {
+    sourceErrors.binance = err instanceof Error ? err.message : String(err);
+  }
 
   try {
     const price = await getKrakenPrice(symbol, date);
     if (price !== null) return { priceUsd: price, source: 'kraken' };
-  } catch { /* fall through */ }
+  } catch (err) {
+    sourceErrors.kraken = err instanceof Error ? err.message : String(err);
+  }
 
   try {
     const price = await getCoingeckoPrice(symbol, date, undefined);
     if (price !== null) return { priceUsd: price, source: 'coingecko' };
-  } catch { /* no data from any source */ }
+  } catch (err) {
+    sourceErrors.coingecko = err instanceof Error ? err.message : String(err);
+  }
 
+  if (Object.keys(sourceErrors).length > 0) {
+    console.error(`[pricing] todas as fontes falharam para ${symbol} em ${date}`, sourceErrors);
+  } else {
+    console.warn(`[pricing] sem dados de preço para ${symbol} em ${date} (ativo pode não estar listado)`);
+  }
   return null;
 }
 

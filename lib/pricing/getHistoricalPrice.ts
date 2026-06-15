@@ -22,6 +22,8 @@ export async function getHistoricalPrice(
 
   if (cached) return normalizeQuote(cached);
 
+  const sourceErrors: Record<string, string> = {};
+
   // 2. Try Binance
   try {
     const price = await getBinancePrice(upper, date);
@@ -29,7 +31,9 @@ export async function getHistoricalPrice(
       await saveQuote(upper, quoteDate, price, 'binance', date);
       return { symbol: upper, date, priceUsd: price, source: 'binance' };
     }
-  } catch { /* fall through */ }
+  } catch (err) {
+    sourceErrors.binance = err instanceof Error ? err.message : String(err);
+  }
 
   // 3. Try Kraken
   try {
@@ -38,7 +42,9 @@ export async function getHistoricalPrice(
       await saveQuote(upper, quoteDate, price, 'kraken', date);
       return { symbol: upper, date, priceUsd: price, source: 'kraken' };
     }
-  } catch { /* fall through */ }
+  } catch (err) {
+    sourceErrors.kraken = err instanceof Error ? err.message : String(err);
+  }
 
   // 4. Fallback to CoinGecko
   try {
@@ -47,8 +53,15 @@ export async function getHistoricalPrice(
       await saveQuote(upper, quoteDate, price, 'coingecko', date);
       return { symbol: upper, date, priceUsd: price, source: 'coingecko' };
     }
-  } catch { /* no data */ }
+  } catch (err) {
+    sourceErrors.coingecko = err instanceof Error ? err.message : String(err);
+  }
 
+  if (Object.keys(sourceErrors).length > 0) {
+    console.error(`[pricing] todas as fontes falharam para ${upper} em ${date}`, sourceErrors);
+  } else {
+    console.warn(`[pricing] sem dados de preço para ${upper} em ${date} (ativo pode não estar listado)`);
+  }
   return null;
 }
 
