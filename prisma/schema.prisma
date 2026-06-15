@@ -84,5 +84,6 @@ model SearchLog {
   createdAt         DateTime @default(now()) @map("created_at")
 
   @@index([blockchain, walletAddress])
+  @@index([walletAddress, blockchain, status])
   @@map("search_logs")
 }

@@ -10,7 +10,9 @@ function createClient(): PrismaClient {
     ssl: process.env.DATABASE_URL?.includes('sslmode=require')
       ? { rejectUnauthorized: false }
       : undefined,
-    max: 5,
+    max: 2,                  // serverless: cada instância usa no máximo 2 conexões
+    idleTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 5_000,
   });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
