@@ -28,6 +28,7 @@ model Transaction {
 
   @@unique([blockchain, txHash, walletAddress], name: "uq_transaction")
   @@index([blockchain, walletAddress, date])
+  @@index([walletAddress, date])
   @@map("transactions")
 }
 
@@ -85,5 +86,6 @@ model SearchLog {
 
   @@unique([blockchain, walletAddress, startDate, endDate], name: "uq_search_log")
   @@index([walletAddress, blockchain, startDate, endDate, status])
+  @@index([createdAt])
   @@map("search_logs")
 }

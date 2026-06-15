@@ -146,7 +146,7 @@ export default function HomePage() {
         setHistoryLoading(true);
         const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET;
         setHistoryError(null);
-        fetch('/api/history', {
+        fetch('/api/history?limit=50', {
           headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
         })
           .then(r => r.json())
@@ -179,7 +179,7 @@ export default function HomePage() {
     }
     if (nav === 'history') {
       setHistoryLoading(true);
-      fetch('/api/history')
+      fetch('/api/history?limit=50')
         .then(r => r.json())
         .then(data => setHistoryLogs(data.logs))
         .catch(() => setHistoryLogs([]))

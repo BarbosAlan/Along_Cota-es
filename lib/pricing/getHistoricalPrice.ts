@@ -15,10 +15,9 @@ export async function getHistoricalPrice(
   const upper = symbol.toUpperCase();
   const quoteDate = startOfDay(parseISO(date));
 
-  // 1. DB cache
-  const cached = await db.quote.findFirst({
-    where: { symbol: upper, quoteDate },
-    orderBy: { createdAt: 'desc' },
+  // 1. DB cache — uq_quote guarantees at most one row per (symbol, quoteDate)
+  const cached = await db.quote.findUnique({
+    where: { uq_quote: { symbol: upper, quoteDate } },
   });
 
   if (cached) return normalizeQuote(cached);
