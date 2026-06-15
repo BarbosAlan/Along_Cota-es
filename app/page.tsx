@@ -143,7 +143,10 @@ export default function HomePage() {
       setActiveNav(saved);
       if (saved === 'history') {
         setHistoryLoading(true);
-        fetch('/api/history')
+        const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET;
+        fetch('/api/history', {
+          headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+        })
           .then(r => r.json())
           .then(data => setHistoryLogs(data.logs))
           .catch(() => setHistoryLogs([]))
@@ -258,8 +261,20 @@ export default function HomePage() {
           endDate: batchLastQuery.endDate,
         }),
       });
-      const json = await res.json() as BatchResponse;
-      if (!res.ok) return;
+      const json = await res.json();
+      if (!res.ok) {
+        const errMsg = (json as { message?: string; error?: string })?.message
+          ?? (json as { message?: string; error?: string })?.error
+          ?? 'Erro ao tentar novamente';
+        setBatchResults(prev => {
+          if (!prev) return prev;
+          const newResults = prev.results.map(r =>
+            r.address === address ? { ...r, error: errMsg } : r
+          );
+          return { ...prev, results: newResults };
+        });
+        return;
+      }
       const newResult = json.results[0];
       if (!newResult) return;
       setBatchResults(prev => {
@@ -291,7 +306,7 @@ export default function HomePage() {
         : new Date().toISOString().slice(0, 10),
       endDate: new Date().toISOString().slice(0, 10),
     };
-    setTxPrefill({ walletAddress: address });
+    setTxPrefill({ walletAddress: address, startDate: data.startDate, endDate: data.endDate });
     setTxFormKey(k => k + 1);
     setActiveNav('transactions');
     handleSearch({ walletAddress: address, startDate: data.startDate, endDate: data.endDate });
@@ -392,7 +407,7 @@ export default function HomePage() {
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-white/10 space-y-0.5">
-          <NavLink icon={<IconSettings />} label="Configurações" active={activeNav === 'settings'} onClick={() => setActiveNav('settings')} />
+          <NavLink icon={<IconSettings />} label="Configurações" active={activeNav === 'settings'} onClick={() => navigateTo('settings')} />
         </div>
       </aside>
 

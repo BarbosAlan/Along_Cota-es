@@ -57,9 +57,13 @@ export function SettingsPanel() {
     setClearing(action);
     setMessage(null);
     try {
+      const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET;
       const res = await fetch('/api/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+        },
         body: JSON.stringify({ action }),
       });
       const json = await res.json();

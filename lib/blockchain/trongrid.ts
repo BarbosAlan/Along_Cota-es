@@ -147,7 +147,7 @@ export class TronGridAdapter implements BlockchainAdapter {
         transactions.push({
           txHash: tx.txID,
           date,
-          type: from === walletAddress ? 'send' : 'receive',
+          type: from.toLowerCase() === walletAddress.toLowerCase() ? 'send' : 'receive',
           assetSymbol: 'TRX',
           assetAddress: undefined,
           amount,
@@ -171,12 +171,16 @@ export class TronGridAdapter implements BlockchainAdapter {
         if (isBefore(date, startDay) || isAfter(date, endDay)) continue;
 
         const decimals = tx.token_info?.decimals ?? 6;
-        const amount = (parseFloat(tx.value) / 10 ** decimals).toFixed(decimals);
+        const rawBig = BigInt(tx.value);
+        const factor = 10n ** BigInt(decimals);
+        const whole = rawBig / factor;
+        const remainder = rawBig % factor;
+        const amount = `${whole}.${remainder.toString().padStart(decimals, '0')}`;
 
         transactions.push({
           txHash: tx.transaction_id,
           date,
-          type: tx.from === walletAddress ? 'send' : 'receive',
+          type: tx.from.toLowerCase() === walletAddress.toLowerCase() ? 'send' : 'receive',
           assetSymbol: tx.token_info?.symbol ?? 'UNKNOWN',
           assetAddress: tx.token_info?.address?.toLowerCase(),
           amount,

@@ -7,7 +7,7 @@ import {
   buildSummary,
   checkCacheExistsForChains,
 } from '@/lib/transactions';
-import { detectBlockchains } from '@/lib/utils/address';
+import { detectBlockchains, normalizeAddress } from '@/lib/utils/address';
 import type { BlockchainId, SearchResponse } from '@/types';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const transactions = await getTransactionsFromDbMulti(chains, walletAddress, startDate, endDate);
     const summary = buildSummary(transactions);
     const log = await db.searchLog.findFirst({
-      where: { blockchain: { in: chains }, walletAddress: walletAddress.toLowerCase(), status: 'success' },
+      where: { blockchain: { in: chains }, walletAddress: normalizeAddress(walletAddress, chains[0]), status: 'success' },
       orderBy: { createdAt: 'desc' },
     });
     const response: SearchResponse = {
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const searchLog = await db.searchLog.create({
         data: {
           blockchain: chain,
-          walletAddress: walletAddress.toLowerCase(),
+          walletAddress: normalizeAddress(walletAddress, chain),
           startDate: startOfDay(parseISO(startDate)),
           endDate: endOfDay(parseISO(endDate)),
           status: 'pending',

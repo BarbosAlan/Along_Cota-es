@@ -1,7 +1,7 @@
-import { getDay, subDays } from 'date-fns';
+import { subDays } from 'date-fns';
 
 export function isWeekend(date: Date): boolean {
-  const d = getDay(date);
+  const d = date.getUTCDay();
   return d === 0 || d === 6;
 }
 

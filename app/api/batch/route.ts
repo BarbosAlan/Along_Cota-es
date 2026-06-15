@@ -7,7 +7,7 @@ import {
   buildSummary,
   checkCacheExistsForChains,
 } from '@/lib/transactions';
-import { detectBlockchains } from '@/lib/utils/address';
+import { detectBlockchains, normalizeAddress } from '@/lib/utils/address';
 import type { BlockchainId, BatchWalletResult, BatchResponse, TransactionSummary } from '@/types';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 
@@ -56,7 +56,7 @@ async function processWallet(
       const searchLog = await db.searchLog.create({
         data: {
           blockchain: chain,
-          walletAddress: address.toLowerCase(),
+          walletAddress: normalizeAddress(address, chain),
           startDate: startOfDay(parseISO(startDate)),
           endDate: endOfDay(parseISO(endDate)),
           status: 'pending',

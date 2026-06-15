@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { PtaxNotFoundError, fetchWithTimeout } from '@/lib/errors';
-import { parseISO, subDays, format } from 'date-fns';
+import { parseISO, subDays } from 'date-fns';
 import { isWeekend } from '@/lib/utils/date';
 import type { PtaxRate } from '@/types';
 
@@ -8,8 +8,10 @@ const PTAX_BASE_URL =
   'https://olinda.bcb.gov.br/olinda/service/PTAX/version/v1/odata';
 
 async function fetchPtaxFromApi(date: Date): Promise<number | null> {
-  // PTAX API requires MM-DD-YYYY format
-  const formatted = format(date, 'MM-dd-yyyy');
+  // PTAX API requires MM-DD-YYYY format; use UTC components to avoid timezone offset
+  const iso = date.toISOString().slice(0, 10);
+  const [y, m, d] = iso.split('-');
+  const formatted = `${m}-${d}-${y}`;
 
   // $orderby=dataHoraCotacao desc ensures we get the last bulletin of the day
   // (Fechamento), not the first (Abertura). The closing rate is what Receita Federal
@@ -28,7 +30,8 @@ async function fetchPtaxFromApi(date: Date): Promise<number | null> {
 }
 
 export async function getPtax(date: string): Promise<PtaxRate> {
-  let current = parseISO(date);
+  // Force UTC midnight to avoid 1-day offset when server is in non-UTC timezone
+  let current = parseISO(date + 'T00:00:00Z');
 
   for (let attempts = 0; attempts < 10; attempts++) {
     // Skip weekends
@@ -37,7 +40,7 @@ export async function getPtax(date: string): Promise<PtaxRate> {
     }
 
     const dateKey = new Date(
-      Date.UTC(current.getFullYear(), current.getMonth(), current.getDate())
+      Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), current.getUTCDate())
     );
 
     // Check DB cache (findFirst avoids Prisma 7 named-constraint requirement)
@@ -47,7 +50,7 @@ export async function getPtax(date: string): Promise<PtaxRate> {
 
     if (cached) {
       return {
-        date: format(current, 'yyyy-MM-dd'),
+        date: current.toISOString().slice(0, 10),
         usdBrl: Number(cached.usdBrl),
       };
     }
@@ -64,7 +67,7 @@ export async function getPtax(date: string): Promise<PtaxRate> {
         // duplicate — record already exists, fine
       }
 
-      return { date: format(current, 'yyyy-MM-dd'), usdBrl: rate };
+      return { date: current.toISOString().slice(0, 10), usdBrl: rate };
     }
 
     // No rate found for this day — try previous day

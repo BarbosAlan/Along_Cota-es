@@ -1,6 +1,6 @@
 import type { BlockchainId } from '@/types';
 
-const LOWERCASE_CHAINS = new Set<BlockchainId>(['ethereum', 'polygon', 'tron']);
+const LOWERCASE_CHAINS = new Set<BlockchainId>(['ethereum', 'polygon']);
 
 export function normalizeAddress(address: string, blockchain: BlockchainId): string {
   return LOWERCASE_CHAINS.has(blockchain) ? address.toLowerCase() : address;

@@ -60,6 +60,20 @@ export async function fetchAndEnrichTransactions(
     const ptaxResults = new Map<string, { usdBrl: number } | null>();
     const warnings: string[] = [];
 
+    // Pre-fetch all unique PTAX dates sequentially — avoids race condition where
+    // multiple concurrent Promise.all callbacks all pass the `has()` guard simultaneously
+    // and then overwrite each other, potentially replacing a good value with null.
+    const uniqueDates = [...new Set([...priceLookups.values()].map(l => l.date))];
+    for (const d of uniqueDates) {
+      try {
+        const ptax = await getPtax(d);
+        ptaxResults.set(d, { usdBrl: ptax.usdBrl });
+      } catch (ptaxErr) {
+        console.error(`[PTAX] failed for ${d}:`, ptaxErr);
+        ptaxResults.set(d, null);
+      }
+    }
+
     const CONCURRENCY = 5;
     const lookupList = [...priceLookups.entries()];
 
@@ -73,20 +87,8 @@ export async function fetchAndEnrichTransactions(
             lookup.assetAddress
           );
           priceResults.set(key, price ? { priceUsd: price.priceUsd, source: price.source } : null);
-
           if (!price) {
             warnings.push(`Cotação não encontrada para ${lookup.symbol} em ${lookup.date}`);
-          }
-
-          // Fetch PTAX for this date
-          if (!ptaxResults.has(lookup.date)) {
-            try {
-              const ptax = await getPtax(lookup.date);
-              ptaxResults.set(lookup.date, { usdBrl: ptax.usdBrl });
-            } catch (ptaxErr) {
-              console.error(`[PTAX] failed for ${lookup.date}:`, ptaxErr);
-              ptaxResults.set(lookup.date, null);
-            }
           }
         })
       );

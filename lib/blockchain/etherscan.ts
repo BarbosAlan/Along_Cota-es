@@ -195,7 +195,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
       action: 'tokentx',
     });
 
-    const native = chain === 'polygon' ? 'MATIC' : 'ETH';
+    const native = chain === 'polygon' ? 'POL' : 'ETH';
     const nativeDecimals = 18;
 
     const transactions: RawTransaction[] = [];
