@@ -149,8 +149,8 @@ export default function HomePage() {
         fetch('/api/history?limit=50', {
           headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
         })
-          .then(r => r.json())
-          .then(data => setHistoryLogs(data.logs))
+          .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+          .then(data => setHistoryLogs(data.logs ?? []))
           .catch(() => setHistoryError('Não foi possível carregar o histórico de buscas.'))
           .finally(() => setHistoryLoading(false));
       } else if (saved === 'dashboard') {
@@ -179,9 +179,12 @@ export default function HomePage() {
     }
     if (nav === 'history') {
       setHistoryLoading(true);
-      fetch('/api/history?limit=50')
-        .then(r => r.json())
-        .then(data => setHistoryLogs(data.logs))
+      const adminToken = process.env.NEXT_PUBLIC_ADMIN_SECRET;
+      fetch('/api/history?limit=50', {
+        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(data => setHistoryLogs(data.logs ?? []))
         .catch(() => setHistoryLogs([]))
         .finally(() => setHistoryLoading(false));
     }
