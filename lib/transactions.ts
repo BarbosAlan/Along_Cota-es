@@ -93,7 +93,7 @@ export async function fetchAndEnrichTransactions(
         })
       );
     }
-
+    
     if (warnings.length > 0) {
       console.warn(`[pricing] ${warnings.length} cotações não encontradas:`, warnings.join(', '));
     }
