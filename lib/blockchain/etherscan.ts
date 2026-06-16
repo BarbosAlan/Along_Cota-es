@@ -137,7 +137,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
         throw new BlockchainApiError(chain, 200, msg, isRateLimit);
       }
       return d;
-    }, 3, 1500);
+    }, 2, 2000);
 
     return Array.isArray(data.result) ? data.result : [];
   }
