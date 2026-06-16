@@ -47,4 +47,5 @@
 body {
   background: var(--color-background);
   color: var(--color-on-surface);
+  min-width: 1024px;
 }
