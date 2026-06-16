@@ -26,6 +26,7 @@ export const searchRequestSchema = z
     endDate: z
       .string()
       .refine(s => isValid(parseISO(s)), 'Data final inválida'),
+    blockchain: z.enum(BLOCKCHAIN_IDS).optional(),
     forceRefresh: z.boolean().optional(),
   })
   .refine(data => !isAfter(parseISO(data.startDate), parseISO(data.endDate)), {

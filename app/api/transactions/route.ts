@@ -29,10 +29,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const { walletAddress, startDate, endDate, forceRefresh } = parsed.data;
+  const { walletAddress, startDate, endDate, forceRefresh, blockchain } = parsed.data;
 
-  // Detect which blockchains match this address format
-  const chains = detectBlockchains(walletAddress) as BlockchainId[];
+  // Use the specified blockchain, or auto-detect from address format
+  const chains: BlockchainId[] = blockchain
+    ? [blockchain]
+    : (detectBlockchains(walletAddress) as BlockchainId[]);
   if (chains.length === 0) {
     return NextResponse.json(
       {
