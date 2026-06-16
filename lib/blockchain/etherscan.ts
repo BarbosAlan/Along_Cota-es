@@ -17,9 +17,9 @@ const CHAIN_IDS: Partial<Record<BlockchainId, number>> = {
 const BASE_URL = 'https://api.etherscan.io/v2/api';
 const PAGE_SIZE = 200; // keep page × offset well under the 10k Etherscan cap
 
-// Etherscan free tier: 5 req/s. 4 req/s gives a safe margin.
+// Etherscan free tier: 3 req/s. 400ms gap gives a safe margin (2.5 req/s).
 // Since EtherscanAdapter is a singleton, all chains share this queue.
-const GAP_MS = 250;
+const GAP_MS = 400;
 
 class RequestQueue {
   private readonly queue: Array<() => void> = [];
