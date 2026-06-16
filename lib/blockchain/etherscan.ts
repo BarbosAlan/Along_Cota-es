@@ -120,7 +120,7 @@ export class EtherscanAdapter implements BlockchainAdapter {
     url: string,
     chain: BlockchainId
   ): Promise<T[]> {
-    const data = await withRetry(async () => {
+    const res = await withRetry(async () => {
       await this.queue.wait();
       const r = await fetchWithTimeout(url, { next: { revalidate: 0 } });
       if (r.status === 429) {
@@ -129,15 +129,19 @@ export class EtherscanAdapter implements BlockchainAdapter {
       if (!r.ok) {
         throw new BlockchainApiError(chain, r.status, `HTTP ${r.status}`, r.status >= 500);
       }
-      const d: EtherscanResponse<T> = await r.json();
-      if (d.status === '0') {
-        if (d.message === 'No transactions found') return d;
-        const msg = `${d.message ?? 'NOTOK'}: ${String(d.result)}`;
-        const isRateLimit = String(d.result).toLowerCase().includes('rate limit');
-        throw new BlockchainApiError(chain, 200, msg, isRateLimit);
-      }
-      return d;
-    }, 2, 2000);
+      return r;
+    }, 2, 1000);
+
+    const data: EtherscanResponse<T> = await res.json();
+
+    if (data.status === '0') {
+      if (data.message === 'No transactions found') return [];
+      throw new BlockchainApiError(
+        chain, 200,
+        `${data.message ?? 'NOTOK'}: ${String(data.result)}`,
+        false
+      );
+    }
 
     return Array.isArray(data.result) ? data.result : [];
   }
