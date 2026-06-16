@@ -1,4 +1,4 @@
-import type { BlockchainId, RawTransaction, TokenMeta, BlockchainAdapterConfig } from '@/types';
+import type { BlockchainId, RawTransaction, TokenMeta } from '@/types';
 
 export interface BlockchainAdapter {
   readonly name: string;
@@ -16,5 +16,3 @@ export interface BlockchainAdapter {
     chain: BlockchainId
   ): Promise<TokenMeta | undefined>;
 }
-
-export type { BlockchainAdapterConfig };

@@ -15,7 +15,7 @@ export type BlockchainId =
 
 export type TransactionType = 'receive' | 'send' | 'swap' | 'fee' | 'unknown';
 
-export type PriceSource = 'binance' | 'kraken' | 'coingecko' | 'dexscreener';
+export type PriceSource = 'binance' | 'kraken' | 'coingecko';
 
 export type BlockchainApiSource =
   | 'etherscan'
@@ -69,14 +69,6 @@ export interface TokenMeta {
   sourceApi: string;
 }
 
-export interface SearchRequest {
-  blockchain: BlockchainId;
-  walletAddress: string;
-  startDate: string;
-  endDate: string;
-  forceRefresh?: boolean;
-}
-
 export interface EnrichedTransactionRow {
   id: string;
   txHash: string;
@@ -108,12 +100,6 @@ export interface SearchResponse {
   summary: TransactionSummary;
   fromCache: boolean;
   warnings: string[];
-}
-
-export interface ExportRequest {
-  transactions: EnrichedTransactionRow[];
-  format: 'xlsx' | 'csv';
-  walletAddress: string;
 }
 
 export interface QuoteRow {

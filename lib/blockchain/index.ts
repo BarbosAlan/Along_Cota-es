@@ -62,7 +62,3 @@ export function getAdapter(chain: BlockchainId): BlockchainAdapter {
   }
   return adapter;
 }
-
-export function getSupportedChains(): BlockchainId[] {
-  return [...adapterRegistry.keys()];
-}
