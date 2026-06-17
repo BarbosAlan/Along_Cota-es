@@ -3,6 +3,8 @@ import { generateExcel, generateCsv, generateQuotesExcel, generateQuotesCsv } fr
 import { exportRequestSchema, quotesExportRequestSchema } from '@/lib/validation';
 import { format } from 'date-fns';
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let body: unknown;
   try {

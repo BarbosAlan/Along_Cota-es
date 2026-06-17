@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { format } from 'date-fns';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 export async function GET(): Promise<NextResponse> {
   try {

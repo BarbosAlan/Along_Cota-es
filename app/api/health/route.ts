@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+export const maxDuration = 10;
+
 export async function GET(): Promise<NextResponse> {
   let dbStatus: 'connected' | 'error' = 'connected';
 

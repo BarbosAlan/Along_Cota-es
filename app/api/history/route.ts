@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
