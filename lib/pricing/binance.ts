@@ -61,8 +61,8 @@ export async function getBinancePrice(
     try {
       const price = await withRetry(() => fetchKline(ticker, quote, date), 3, 500);
       if (price !== null) return price;
-    } catch {
-      // Try next quote asset
+    } catch (err) {
+      console.error(`[binance] ${ticker}${quote} on ${date}:`, err instanceof Error ? err.message : err);
     }
   }
 
