@@ -23,12 +23,15 @@ async function fetchKline(
 
   const res = await fetchWithTimeout(url.toString(), { next: { revalidate: 0 } });
 
-  // Binance returns 400 for invalid pairs
-  if (res.status === 400) return null;
+  if (res.status === 400) {
+    const body = await res.text().catch(() => '');
+    console.warn(`[binance] HTTP 400 for ${baseSymbol}${quoteAsset} on ${date}: ${body.slice(0, 200)}`);
+    return null;
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new PricingApiError('binance', `HTTP ${res.status}: ${body}`);
+    throw new PricingApiError('binance', `HTTP ${res.status}: ${body.slice(0, 200)}`);
   }
 
   const data: [string, string, string, string, string][] = await res.json();
@@ -61,6 +64,7 @@ export async function getBinancePrice(
     try {
       const price = await withRetry(() => fetchKline(ticker, quote, date), 3, 500);
       if (price !== null) return price;
+      console.warn(`[binance] ${ticker}${quote} on ${date}: returned null (pair may not exist or geo-blocked)`);
     } catch (err) {
       console.error(`[binance] ${ticker}${quote} on ${date}:`, err instanceof Error ? err.message : err);
     }
