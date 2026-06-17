@@ -42,10 +42,10 @@ async function fetchKline(
   return isNaN(closePrice) ? null : closePrice;
 }
 
-// Symbols that trade under a different ticker on Binance
-const BINANCE_ALIAS: Record<string, string> = {
-  // LUNA2 was renamed back to LUNA on Binance after Luna Classic was rebranded to LUNC
-};
+// Symbols that trade under a different ticker on Binance.
+// Note: Binance.com is geo-blocked from Vercel's US servers (HTTP 451).
+// Historical data for blocked symbols must be pre-seeded via scripts/seed-*.mjs.
+const BINANCE_ALIAS: Record<string, string> = {};
 
 export async function getBinancePrice(
   symbol: string,
