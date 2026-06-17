@@ -3,10 +3,11 @@ import { parseISO, startOfDay } from 'date-fns';
 
 const BASE_URL = 'https://api.kraken.com/0/public/OHLC';
 
-// Kraken uses XBT for Bitcoin and LUNA2 for Terra 2.0
+// Kraken uses XBT for Bitcoin; LUNA on Kraken is Luna Classic (LUNC), so alias LUNA
+// to LUNA2 which has no pair — this causes Kraken to return null and lets Binance win.
 const KRAKEN_SYMBOL: Record<string, string> = {
   BTC: 'XBT',
-  LUNA: 'LUNA2', // Kraken lists Terra Classic as LUNA and Terra 2.0 as LUNA2
+  LUNA: 'LUNA2',
 };
 
 // Stablecoins — always 1 USD

@@ -41,7 +41,7 @@ async function fetchKline(
 
 // Symbols that trade under a different ticker on Binance
 const BINANCE_ALIAS: Record<string, string> = {
-  LUNA: 'LUNA2', // Terra 2.0 listed as LUNA2 on Binance
+  // LUNA2 was renamed back to LUNA on Binance after Luna Classic was rebranded to LUNC
 };
 
 export async function getBinancePrice(
