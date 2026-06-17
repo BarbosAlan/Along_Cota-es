@@ -15,6 +15,12 @@ function makeTx({
   inputs = [] as string[],
   outputs = [] as { addr: string; value: number }[],
   confirmed = true,
+}: {
+  txid: string;
+  blockTime: number;
+  inputs?: string[];
+  outputs?: { addr: string; value: number }[];
+  confirmed?: boolean;
 }) {
   return {
     txid,
