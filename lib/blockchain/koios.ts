@@ -31,13 +31,17 @@ export class KoiosAdapter implements BlockchainAdapter {
 
   private async getAddrTxs(address: string, offset: number): Promise<KoiosAddrTx[]> {
     const url = new URL(`${KOIOS_BASE}/address_txs`);
-    url.searchParams.set('_address', address);
     url.searchParams.set('limit', PAGE_SIZE.toString());
     url.searchParams.set('offset', offset.toString());
     url.searchParams.set('order', 'block_time.desc');
 
     return withRetry(async () => {
-      const res = await fetchWithTimeout(url.toString(), { next: { revalidate: 0 } });
+      const res = await fetchWithTimeout(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _addresses: [address] }),
+        next: { revalidate: 0 },
+      } as RequestInit);
       if (res.status === 429) throw new BlockchainApiError('cardano', 429, 'Rate limited', true);
       if (!res.ok) throw new BlockchainApiError('cardano', res.status, `HTTP ${res.status}`, res.status >= 500);
       return res.json();

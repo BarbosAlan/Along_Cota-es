@@ -3,7 +3,7 @@ import type { BlockchainAdapter } from './types';
 import { BlockchainApiError, withRetry, fetchWithTimeout } from '@/lib/errors';
 import { parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 
-const LCD_BASE = 'https://phoenix-lcd.terra.dev';
+const LCD_BASE = 'https://terra-lcd.publicnode.com';
 const ULUNA_DECIMALS = 6;
 const PAGE_LIMIT = 100;
 
@@ -57,7 +57,7 @@ export class TerraAdapter implements BlockchainAdapter {
 
   private async fetchTxPage(event: string, offset: number): Promise<LcdTxsResponse> {
     const url = new URL(`${LCD_BASE}/cosmos/tx/v1beta1/txs`);
-    url.searchParams.set('events', event);
+    url.searchParams.set('query', event);
     url.searchParams.set('pagination.limit', PAGE_LIMIT.toString());
     url.searchParams.set('pagination.offset', offset.toString());
     url.searchParams.set('order_by', 'ORDER_BY_DESC');
