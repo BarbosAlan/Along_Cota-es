@@ -138,8 +138,7 @@ export async function fetchAndEnrichTransactions(
       })).map(r => r.txHash)
     );
 
-    // Delete stored transactions no longer returned by the API (e.g. approve() calls
-    // that existed before the zero-value filter was added)
+    // API response is authoritative on re-fetch; purge records it no longer returns.
     const activeHashes = new Set(enrichedRecords.map(r => r.txHash));
     const staleHashes = [...storedHashes].filter(h => !activeHashes.has(h));
     if (staleHashes.length > 0) {

@@ -22,6 +22,7 @@ export async function getHistoricalPrice(
   if (BRL_STABLES.has(upper)) {
     try {
       const ptax = await getPtax(date);
+      if (ptax.usdBrl <= 0) return null;
       const priceUsd = 1 / ptax.usdBrl;
       return { symbol: upper, date, priceUsd, source: 'ptax' as PriceSource };
     } catch {
