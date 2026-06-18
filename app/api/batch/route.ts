@@ -5,7 +5,7 @@ import {
   fetchAndEnrichTransactions,
   getTransactionsFromDbMulti,
   buildSummary,
-  checkCacheExistsForChains,
+  getCachedChains,
 } from '@/lib/transactions';
 import { detectBlockchains, normalizeAddress } from '@/lib/utils/address';
 import type { BlockchainId, BatchWalletResult, BatchResponse, TransactionSummary } from '@/types';
@@ -42,8 +42,13 @@ async function processWallet(
     };
   }
 
-  const fromCache =
-    !forceRefresh && (await checkCacheExistsForChains(chains, address, startDate, endDate));
+  const cachedChains = forceRefresh
+    ? []
+    : await getCachedChains(chains, address, startDate, endDate);
+
+  const cachedSet = new Set(cachedChains);
+  const chainsToFetch = chains.filter(c => !cachedSet.has(c));
+  const fromCache = chainsToFetch.length === 0;
 
   if (fromCache) {
     const transactions = await getTransactionsFromDbMulti(chains, address, startDate, endDate);
@@ -52,7 +57,7 @@ async function processWallet(
   }
 
   const fetchResults = await Promise.allSettled(
-    chains.map(async (chain) => {
+    chainsToFetch.map(async (chain) => {
       const normalizedWallet = normalizeAddress(address, chain);
       const start = startOfDay(parseISO(startDate));
       const end = endOfDay(parseISO(endDate));
@@ -83,7 +88,7 @@ async function processWallet(
     if (fetchResults[i].status === 'rejected') {
       const r = fetchResults[i] as PromiseRejectedResult;
       const msg = r.reason instanceof Error ? r.reason.message : 'Erro desconhecido';
-      warnings.push(`Erro ao buscar ${chains[i]}: ${msg}`);
+      warnings.push(`Erro ao buscar ${chainsToFetch[i]}: ${msg}`);
     }
   }
 

@@ -5,7 +5,7 @@ import {
   fetchAndEnrichTransactions,
   getTransactionsFromDbMulti,
   buildSummary,
-  checkCacheExistsForChains,
+  getCachedChains,
 } from '@/lib/transactions';
 import { detectBlockchains, normalizeAddress } from '@/lib/utils/address';
 import type { BlockchainId, SearchResponse } from '@/types';
@@ -46,7 +46,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const fromCache = !forceRefresh && await checkCacheExistsForChains(chains, walletAddress, startDate, endDate);
+  // Per-chain cache check: only fetch chains that have no cached result
+  const cachedChains = forceRefresh
+    ? []
+    : await getCachedChains(chains, walletAddress, startDate, endDate);
+
+  const cachedSet = new Set(cachedChains);
+  const chainsToFetch = chains.filter(c => !cachedSet.has(c));
+  const fromCache = chainsToFetch.length === 0;
 
   if (fromCache) {
     const transactions = await getTransactionsFromDbMulti(chains, walletAddress, startDate, endDate);
@@ -65,9 +72,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json(response);
   }
 
-  // Fetch each chain in parallel; tolerate partial failures
+  // Fetch only chains without cache, in parallel; tolerate partial failures
   const fetchResults = await Promise.allSettled(
-    chains.map(async (chain) => {
+    chainsToFetch.map(async (chain) => {
       const normalizedWallet = normalizeAddress(walletAddress, chain);
       const start = startOfDay(parseISO(startDate));
       const end = endOfDay(parseISO(endDate));
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       if (!firstLogId) firstLogId = result.value;
     } else {
       const msg = result.reason instanceof Error ? result.reason.message : 'Erro desconhecido';
-      warnings.push(`Erro ao buscar ${chains[i]}: ${msg}`);
+      warnings.push(`Erro ao buscar ${chainsToFetch[i]}: ${msg}`);
     }
   }
 

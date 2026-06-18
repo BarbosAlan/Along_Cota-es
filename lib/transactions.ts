@@ -254,7 +254,8 @@ export async function checkCacheExists(
   startDate: string,
   endDate: string
 ): Promise<boolean> {
-  return checkCacheExistsForChains([blockchain], walletAddress, startDate, endDate);
+  const cached = await getCachedChains([blockchain], walletAddress, startDate, endDate);
+  return cached.length === 1;
 }
 
 export async function checkCacheExistsForChains(
@@ -263,6 +264,16 @@ export async function checkCacheExistsForChains(
   startDate: string,
   endDate: string
 ): Promise<boolean> {
+  const cached = await getCachedChains(blockchains, walletAddress, startDate, endDate);
+  return cached.length === blockchains.length;
+}
+
+export async function getCachedChains(
+  blockchains: BlockchainId[],
+  walletAddress: string,
+  startDate: string,
+  endDate: string
+): Promise<BlockchainId[]> {
   const wallet = normalizeAddress(walletAddress, blockchains[0]);
   const start = startOfDay(parseISO(startDate));
   const end = endOfDay(parseISO(endDate));
@@ -279,7 +290,7 @@ export async function checkCacheExistsForChains(
   });
 
   const found = new Set(logs.map(l => l.blockchain));
-  return blockchains.every(bc => found.has(bc));
+  return blockchains.filter(bc => found.has(bc)) as BlockchainId[];
 }
 
 export async function getTransactionsFromDbMulti(
