@@ -130,17 +130,25 @@ export async function fetchAndEnrichTransactions(
       };
     });
 
-    // ── 1 query to find which tx hashes already exist ────────────────────
-    const existingHashes = new Set(
+    // ── Find all stored hashes for this wallet in the date range ─────────
+    const storedHashes = new Set(
       (await db.transaction.findMany({
-        where: {
-          blockchain,
-          walletAddress: wallet,
-          txHash: { in: enrichedRecords.map(r => r.txHash) },
-        },
+        where: { blockchain, walletAddress: wallet, date: { gte: start, lte: end } },
         select: { txHash: true },
       })).map(r => r.txHash)
     );
+
+    // Delete stored transactions no longer returned by the API (e.g. approve() calls
+    // that existed before the zero-value filter was added)
+    const activeHashes = new Set(enrichedRecords.map(r => r.txHash));
+    const staleHashes = [...storedHashes].filter(h => !activeHashes.has(h));
+    if (staleHashes.length > 0) {
+      await db.transaction.deleteMany({
+        where: { blockchain, walletAddress: wallet, txHash: { in: staleHashes } },
+      });
+    }
+
+    const existingHashes = new Set([...storedHashes].filter(h => activeHashes.has(h)));
 
     const toCreate = enrichedRecords.filter(r => !existingHashes.has(r.txHash));
     const toUpdate = enrichedRecords.filter(r =>  existingHashes.has(r.txHash));
