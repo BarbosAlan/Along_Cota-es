@@ -17,30 +17,39 @@ const CHAIN_IDS: Partial<Record<BlockchainId, number>> = {
 const BASE_URL = 'https://api.etherscan.io/v2/api';
 const PAGE_SIZE = 200; // keep page × offset well under the 10k Etherscan cap
 
-// Etherscan free tier: 3 req/s. 400ms gap gives a safe margin (2.5 req/s).
-// Since EtherscanAdapter is a singleton, all chains share this queue.
+// Etherscan free tier: 3 req/s. 400ms gap gives a safe margin (~2.5 req/s).
+// Since EtherscanAdapter is a singleton, all chains share this limiter.
 const GAP_MS = 400;
 
+// Time-based rate limiter: enforces a minimum gap between consecutive calls
+// even when requests arrive sequentially (not concurrently).
 class RequestQueue {
-  private readonly queue: Array<() => void> = [];
-  private draining = false;
+  private lastRelease = 0;
+  private pending: Array<() => void> = [];
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
   wait(): Promise<void> {
-    return new Promise(resolve => {
-      this.queue.push(resolve);
-      if (!this.draining) this.drain();
+    return new Promise<void>(resolve => {
+      this.pending.push(resolve);
+      this.schedule();
     });
   }
 
-  private async drain() {
-    this.draining = true;
-    while (this.queue.length > 0) {
-      this.queue.shift()!();
-      if (this.queue.length > 0) {
-        await new Promise(r => setTimeout(r, GAP_MS));
+  private schedule() {
+    if (this.timer !== null) return;
+    if (this.pending.length === 0) return;
+
+    const now = Date.now();
+    const delay = Math.max(0, this.lastRelease + GAP_MS - now);
+
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      if (this.pending.length > 0) {
+        this.lastRelease = Date.now();
+        this.pending.shift()!();
+        this.schedule();
       }
-    }
-    this.draining = false;
+    }, delay);
   }
 }
 
