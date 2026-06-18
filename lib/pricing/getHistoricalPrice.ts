@@ -4,8 +4,11 @@ import { getKrakenPrice } from './kraken';
 import { getCoingeckoPrice } from './coingecko';
 import { getPtax } from './ptax';
 import { normalizeQuote } from '@/lib/normalize/normalizeQuote';
-import type { HistoricalPrice } from '@/types';
+import type { HistoricalPrice, PriceSource } from '@/types';
 import { parseISO, startOfDay } from 'date-fns';
+
+// BRL-pegged stablecoins: 1 token = 1 BRL. No USD price exists on exchanges.
+const BRL_STABLES = new Set(['BRZ', 'BRLA']);
 
 export async function getHistoricalPrice(
   symbol: string,
@@ -14,6 +17,17 @@ export async function getHistoricalPrice(
 ): Promise<HistoricalPrice | null> {
   const upper = symbol.toUpperCase();
   const quoteDate = startOfDay(parseISO(date));
+
+  // BRL stablecoins: derive USD price from PTAX (1 BRL ÷ PTAX = USD)
+  if (BRL_STABLES.has(upper)) {
+    try {
+      const ptax = await getPtax(date);
+      const priceUsd = 1 / ptax.usdBrl;
+      return { symbol: upper, date, priceUsd, source: 'ptax' as PriceSource };
+    } catch {
+      return null;
+    }
+  }
 
   // 1. DB cache — uq_quote guarantees at most one row per (symbol, quoteDate)
   const cached = await db.quote.findUnique({

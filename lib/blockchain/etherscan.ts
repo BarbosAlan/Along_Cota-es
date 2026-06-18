@@ -258,6 +258,8 @@ export class EtherscanAdapter implements BlockchainAdapter {
     }
 
     for (const tx of tokenTxs) {
+      if (tx.value === '0') continue; // approve() calls — not real transfers
+
       const date = fromUnixTime(parseInt(tx.timeStamp));
       if (isBefore(date, startDay) || isAfter(date, endDay)) continue;
 
