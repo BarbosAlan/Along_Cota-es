@@ -149,13 +149,13 @@ async function main() {
 
   for (const dateStr of dates) {
     try {
-      // Skip if already cached
+      // Skip only if already sourced from OKX — re-process binance records
       const { rows } = await pool.query(
-        `SELECT price_usd FROM quotes WHERE symbol = $1 AND quote_date = $2`,
+        `SELECT price_usd, source_api FROM quotes WHERE symbol = $1 AND quote_date = $2`,
         [SYMBOL, dateStr]
       );
-      if (rows.length > 0) {
-        process.stdout.write(`  ${dateStr}: cached ($${Number(rows[0].price_usd).toFixed(4)})\n`);
+      if (rows.length > 0 && rows[0].source_api === 'okx') {
+        process.stdout.write(`  ${dateStr}: cached/okx ($${Number(rows[0].price_usd).toFixed(4)})\n`);
         skipped++;
         continue;
       }
