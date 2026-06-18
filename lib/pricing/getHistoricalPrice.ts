@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { getBinancePrice } from './binance';
+import { getOkxPrice } from './okx';
 import { getKrakenPrice } from './kraken';
 import { getCoingeckoPrice } from './coingecko';
 import { getPtax } from './ptax';
@@ -24,15 +24,15 @@ export async function getHistoricalPrice(
 
   const sourceErrors: Record<string, string> = {};
 
-  // 2. Try Binance
+  // 2. Try OKX
   try {
-    const price = await getBinancePrice(upper, date);
+    const price = await getOkxPrice(upper, date);
     if (price !== null) {
-      await saveQuote(upper, quoteDate, price, 'binance', date);
-      return { symbol: upper, date, priceUsd: price, source: 'binance' };
+      await saveQuote(upper, quoteDate, price, 'okx', date);
+      return { symbol: upper, date, priceUsd: price, source: 'okx' };
     }
   } catch (err) {
-    sourceErrors.binance = err instanceof Error ? err.message : String(err);
+    sourceErrors.okx = err instanceof Error ? err.message : String(err);
   }
 
   // 3. Try Kraken

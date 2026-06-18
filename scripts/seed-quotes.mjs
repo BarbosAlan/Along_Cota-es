@@ -1,5 +1,5 @@
 /**
- * Seeds the database with daily prices for any symbol from Binance.
+ * Seeds the database with daily prices for any symbol from OKX.
  *
  * Usage:
  *   node scripts/seed-quotes.mjs <SYMBOL> [startDate] [endDate]
@@ -8,9 +8,6 @@
  *   node scripts/seed-quotes.mjs BTC 2024-01-01 2024-12-31
  *   node scripts/seed-quotes.mjs SOL 2024-01-01 2024-12-31
  *   node scripts/seed-quotes.mjs ETH 2023-01-01 2024-12-31
- *
- * Why this exists: Binance.com is geo-blocked from Vercel's US servers (HTTP 451).
- * Run locally (Brazil, not geo-blocked) to pre-populate the DB cache.
  */
 
 import pg from 'pg';
@@ -32,13 +29,13 @@ const SYMBOL    = rawSymbol.toUpperCase();
 const START     = startArg ?? '2024-01-01';
 const END       = endArg   ?? '2024-12-31';
 
-// Binance ticker overrides (symbol → Binance base ticker)
-const BINANCE_TICKER = {
-  // Binance renamed LUNA2 back to LUNA
-  // Add overrides here only when the symbol differs from its Binance base ticker
+// OKX base ticker overrides (symbol → OKX base ticker)
+const OKX_TICKER = {
+  // Add overrides here only when the symbol differs from its OKX base ticker
 };
 
-const ticker = BINANCE_TICKER[SYMBOL] ?? SYMBOL;
+const ticker = OKX_TICKER[SYMBOL] ?? SYMBOL;
+const INST_ID = `${ticker}-USDT`;
 
 // --- DB setup ---
 function parseEnvFile(filePath) {
@@ -79,21 +76,29 @@ const pool = new pg.Pool({
   max: 1,
 });
 
-// --- Binance ---
-async function getBinancePrice(binanceTicker, dateStr) {
-  const start = new Date(dateStr + 'T00:00:00Z').getTime();
-  const end   = start + 86399999;
-  const url   = `https://api.binance.com/api/v3/klines?symbol=${binanceTicker}USDT&interval=1d&startTime=${start}&endTime=${end}&limit=1`;
+// --- OKX ---
+async function getOkxPrice(instId, dateStr) {
+  const dayStart = new Date(dateStr + 'T00:00:00Z').getTime();
+  const after = dayStart + 86400000; // start of next day — OKX returns data older than this
+  const url = `https://www.okx.com/api/v5/market/history-candles?instId=${instId}&bar=1D&after=${after}&limit=1`;
 
   const res = await fetch(url);
-  if (res.status === 400) return null; // pair doesn't exist
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Binance ${res.status}: ${body.slice(0, 120)}`);
+    throw new Error(`OKX ${res.status}: ${body.slice(0, 120)}`);
   }
-  const data = await res.json();
-  if (!data.length) return null;
-  return parseFloat(data[0][4]); // index 4 = close price
+  const json = await res.json();
+  if (json.code !== '0') {
+    if (json.code === '51001') return null; // instrument doesn't exist
+    throw new Error(`OKX API error ${json.code}: ${json.msg}`);
+  }
+  if (!json.data?.length) return null;
+
+  const candleTs = parseInt(json.data[0][0], 10);
+  if (candleTs < dayStart || candleTs >= dayStart + 86400000) return null;
+
+  const close = parseFloat(json.data[0][4]);
+  return isNaN(close) ? null : close;
 }
 
 // --- BCB PTAX ---
@@ -128,17 +133,17 @@ function getDates(startStr, endStr) {
 // --- Main ---
 async function main() {
   const dates = getDates(START, END);
-  console.log(`\nSeeding ${dates.length} days for ${SYMBOL} (Binance: ${ticker}USDT)`);
+  console.log(`\nSeeding ${dates.length} days for ${SYMBOL} (OKX: ${INST_ID})`);
   console.log(`Period: ${START} → ${END}\n`);
 
-  // Verify the ticker exists on Binance before starting
-  const testPrice = await getBinancePrice(ticker, START);
+  // Verify the instrument exists on OKX before starting
+  const testPrice = await getOkxPrice(INST_ID, START);
   if (testPrice === null) {
-    console.error(`✗ ${ticker}USDT not found on Binance for ${START}. Check the symbol.`);
+    console.error(`✗ ${INST_ID} not found on OKX for ${START}. Check the symbol.`);
     await pool.end();
     process.exit(1);
   }
-  console.log(`✓ Binance verified: ${ticker}USDT on ${START} = $${testPrice}\n`);
+  console.log(`✓ OKX verified: ${INST_ID} on ${START} = $${testPrice}\n`);
 
   let inserted = 0, skipped = 0, failed = 0;
 
@@ -155,7 +160,7 @@ async function main() {
         continue;
       }
 
-      const priceUsd = await getBinancePrice(ticker, dateStr);
+      const priceUsd = await getOkxPrice(INST_ID, dateStr);
       if (priceUsd === null) {
         process.stdout.write(`  ${dateStr}: no data (weekend/holiday with no candle)\n`);
         skipped++;
@@ -167,11 +172,11 @@ async function main() {
 
       await pool.query(
         `INSERT INTO quotes (id, symbol, quote_date, price_usd, price_brl, source_api, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2::date, $3, $4, 'binance', NOW(), NOW())
+         VALUES (gen_random_uuid(), $1, $2::date, $3, $4, 'okx', NOW(), NOW())
          ON CONFLICT (symbol, quote_date) DO UPDATE
            SET price_usd  = EXCLUDED.price_usd,
                price_brl  = EXCLUDED.price_brl,
-               source_api = 'binance',
+               source_api = 'okx',
                updated_at = NOW()`,
         [SYMBOL, dateStr, priceUsd, priceBrl]
       );
@@ -182,7 +187,7 @@ async function main() {
       );
       inserted++;
 
-      await new Promise(r => setTimeout(r, 110)); // ~9 req/s, within Binance's 10/s limit
+      await new Promise(r => setTimeout(r, 60)); // ~16 req/s, within OKX's 40/2s limit
     } catch (err) {
       process.stdout.write(`  ${dateStr}: ERROR — ${err.message}\n`);
       failed++;

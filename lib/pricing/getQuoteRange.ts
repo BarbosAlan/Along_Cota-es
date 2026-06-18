@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { getBinancePrice } from './binance';
+import { getOkxPrice } from './okx';
 import { getKrakenPrice } from './kraken';
 import { getCoingeckoPrice } from './coingecko';
 import { getPtax } from './ptax';
@@ -158,10 +158,10 @@ async function fetchPriceFromApi(
   const sourceErrors: Record<string, string> = {};
 
   try {
-    const price = await getBinancePrice(symbol, date);
-    if (price !== null) return { priceUsd: price, source: 'binance' };
+    const price = await getOkxPrice(symbol, date);
+    if (price !== null) return { priceUsd: price, source: 'okx' };
   } catch (err) {
-    sourceErrors.binance = err instanceof Error ? err.message : String(err);
+    sourceErrors.okx = err instanceof Error ? err.message : String(err);
   }
 
   try {

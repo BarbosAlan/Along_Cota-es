@@ -15,7 +15,7 @@ export type BlockchainId =
 
 export type TransactionType = 'receive' | 'send' | 'swap' | 'fee' | 'unknown';
 
-export type PriceSource = 'binance' | 'kraken' | 'coingecko';
+export type PriceSource = 'okx' | 'binance' | 'kraken' | 'coingecko';
 
 export type BlockchainApiSource =
   | 'etherscan'

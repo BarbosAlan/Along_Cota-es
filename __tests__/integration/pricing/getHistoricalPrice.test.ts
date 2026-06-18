@@ -9,19 +9,19 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-vi.mock('@/lib/pricing/binance', () => ({ getBinancePrice: vi.fn() }));
+vi.mock('@/lib/pricing/okx', () => ({ getOkxPrice: vi.fn() }));
 vi.mock('@/lib/pricing/kraken', () => ({ getKrakenPrice: vi.fn() }));
 vi.mock('@/lib/pricing/coingecko', () => ({ getCoingeckoPrice: vi.fn() }));
 vi.mock('@/lib/pricing/ptax', () => ({ getPtax: vi.fn() }));
 
 import { getHistoricalPrice } from '@/lib/pricing/getHistoricalPrice';
 import { db } from '@/lib/db';
-import { getBinancePrice } from '@/lib/pricing/binance';
+import { getOkxPrice } from '@/lib/pricing/okx';
 import { getKrakenPrice } from '@/lib/pricing/kraken';
 import { getCoingeckoPrice } from '@/lib/pricing/coingecko';
 import { getPtax } from '@/lib/pricing/ptax';
 
-function makeDbQuote(priceUsd: number, source = 'binance') {
+function makeDbQuote(priceUsd: number, source = 'okx') {
   return {
     id: 'q1',
     symbol: 'BTC',
@@ -50,27 +50,27 @@ describe('getHistoricalPrice — DB cache', () => {
 
     expect(result).not.toBeNull();
     expect(result?.priceUsd).toBe(42000);
-    expect(result?.source).toBe('binance');
-    expect(getBinancePrice).not.toHaveBeenCalled();
+    expect(result?.source).toBe('okx');
+    expect(getOkxPrice).not.toHaveBeenCalled();
     expect(getKrakenPrice).not.toHaveBeenCalled();
     expect(getCoingeckoPrice).not.toHaveBeenCalled();
   });
 });
 
 describe('getHistoricalPrice — fallback chain', () => {
-  it('uses Binance first when no cache', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(42000);
+  it('uses OKX first when no cache', async () => {
+    vi.mocked(getOkxPrice).mockResolvedValue(42000);
 
     const result = await getHistoricalPrice('BTC', '2024-01-15');
 
     expect(result?.priceUsd).toBe(42000);
-    expect(result?.source).toBe('binance');
+    expect(result?.source).toBe('okx');
     expect(getKrakenPrice).not.toHaveBeenCalled();
     expect(getCoingeckoPrice).not.toHaveBeenCalled();
   });
 
-  it('falls back to Kraken when Binance returns null', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(null);
+  it('falls back to Kraken when OKX returns null', async () => {
+    vi.mocked(getOkxPrice).mockResolvedValue(null);
     vi.mocked(getKrakenPrice).mockResolvedValue(41800);
 
     const result = await getHistoricalPrice('BTC', '2024-01-15');
@@ -80,8 +80,8 @@ describe('getHistoricalPrice — fallback chain', () => {
     expect(getCoingeckoPrice).not.toHaveBeenCalled();
   });
 
-  it('falls back to CoinGecko when both Binance and Kraken return null', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(null);
+  it('falls back to CoinGecko when both OKX and Kraken return null', async () => {
+    vi.mocked(getOkxPrice).mockResolvedValue(null);
     vi.mocked(getKrakenPrice).mockResolvedValue(null);
     vi.mocked(getCoingeckoPrice).mockResolvedValue(41500);
 
@@ -92,7 +92,7 @@ describe('getHistoricalPrice — fallback chain', () => {
   });
 
   it('returns null when all three sources return null', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(null);
+    vi.mocked(getOkxPrice).mockResolvedValue(null);
     vi.mocked(getKrakenPrice).mockResolvedValue(null);
     vi.mocked(getCoingeckoPrice).mockResolvedValue(null);
 
@@ -102,7 +102,7 @@ describe('getHistoricalPrice — fallback chain', () => {
   });
 
   it('returns null when all sources throw errors', async () => {
-    vi.mocked(getBinancePrice).mockRejectedValue(new Error('Network error'));
+    vi.mocked(getOkxPrice).mockRejectedValue(new Error('Network error'));
     vi.mocked(getKrakenPrice).mockRejectedValue(new Error('Timeout'));
     vi.mocked(getCoingeckoPrice).mockRejectedValue(new Error('Rate limited'));
 
@@ -112,7 +112,7 @@ describe('getHistoricalPrice — fallback chain', () => {
   });
 
   it('upserts the quote to DB after a successful fetch', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(42000);
+    vi.mocked(getOkxPrice).mockResolvedValue(42000);
 
     await getHistoricalPrice('BTC', '2024-01-15');
 
@@ -125,17 +125,17 @@ describe('getHistoricalPrice — fallback chain', () => {
 
 describe('getHistoricalPrice — symbol normalisation', () => {
   it('uppercases the symbol before querying', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(42000);
+    vi.mocked(getOkxPrice).mockResolvedValue(42000);
 
     await getHistoricalPrice('btc', '2024-01-15');
 
-    expect(getBinancePrice).toHaveBeenCalledWith('BTC', '2024-01-15');
+    expect(getOkxPrice).toHaveBeenCalledWith('BTC', '2024-01-15');
   });
 });
 
 describe('getHistoricalPrice — PTAX integration', () => {
   it('computes priceBrl when PTAX is available', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(42000);
+    vi.mocked(getOkxPrice).mockResolvedValue(42000);
     vi.mocked(getPtax).mockResolvedValue({ date: '2024-01-15', usdBrl: 5.0 });
 
     await getHistoricalPrice('BTC', '2024-01-15');
@@ -145,7 +145,7 @@ describe('getHistoricalPrice — PTAX integration', () => {
   });
 
   it('persists priceBrl as null when PTAX is unavailable', async () => {
-    vi.mocked(getBinancePrice).mockResolvedValue(42000);
+    vi.mocked(getOkxPrice).mockResolvedValue(42000);
     vi.mocked(getPtax).mockRejectedValue(new Error('PTAX unavailable'));
 
     await getHistoricalPrice('BTC', '2024-01-15');
