@@ -216,5 +216,5 @@ export const BLOCKCHAIN_EXPLORERS: Record<BlockchainId, string> = {
   terra: 'https://finder.terra.money/mainnet/tx/',
   cardano: 'https://cardanoscan.io/transaction/',
   xrp: 'https://xrpscan.com/tx/',
-  lisk: 'https://lisk.observer/transactions/',
+  lisk: 'https://blockscout.lisk.com/tx/',
 };
