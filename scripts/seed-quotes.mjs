@@ -8,6 +8,7 @@
  *   node scripts/seed-quotes.mjs BTC 2024-01-01 2024-12-31
  *   node scripts/seed-quotes.mjs SOL 2024-01-01 2024-12-31
  *   node scripts/seed-quotes.mjs ETH 2023-01-01 2024-12-31
+ *   node scripts/seed-quotes.mjs LSK 2024-01-01 2024-12-31
  */
 
 import pg from 'pg';
