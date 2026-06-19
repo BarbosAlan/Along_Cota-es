@@ -4,10 +4,10 @@ export async function register() {
   };
 
   const optional: Record<string, string> = {
-    ETHERSCAN_API_KEY: 'Ethereum & Polygon (sem chave = rate limit público)',
-    HELIUS_API_KEY:    'Solana (sem chave = sem suporte a Solana)',
-    COINGECKO_API_KEY: 'CoinGecko Pro (sem chave = tier gratuito, 30 req/min)',
-    TRONGRID_API_KEY:  'Tron (sem chave = rate limit público)',
+    ETHERSCAN_API_KEY:        'Ethereum & Polygon (sem chave = rate limit público)',
+    HELIUS_API_KEY:           'Solana (sem chave = sem suporte a Solana)',
+    COINGECKO_API_KEY:        'CoinGecko Pro (sem chave = tier gratuito, 30 req/min)',
+    NEXT_PUBLIC_ADMIN_SECRET: 'Token para acessar /api/history (sem chave = endpoint público)',
   };
 
   const missing = Object.entries(required).filter(([k]) => !process.env[k]);

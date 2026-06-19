@@ -203,3 +203,4 @@ async function persistQuote(
     // Non-critical — cache persistence failure does not block the response
   }
 }
+
